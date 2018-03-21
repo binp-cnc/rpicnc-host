@@ -21,11 +21,9 @@ def handle(req):
 	}
 
 	if req["type"] == "init":
-		libcnc.cnc_init()
 		res["status"] = "ok"
 
 	if req["type"] == "quit":
-		libcnc.cnc_quit()
 		res["status"] = "ok"
 
 	elif req["type"] == "scan":
@@ -41,7 +39,13 @@ def handle(req):
 		})
 
 	elif req["type"] == "move":
-		libcnc.cnc_move(*(req["pos"] + req["vel"] + req["acc"]))
+		args = [
+			c_int32(req["pos"][0]), c_int32(req["pos"][1]),
+			c_float(req["ivel"][0]), c_float(req["ivel"][1]),
+			c_float(req["vel"][0]), c_float(req["vel"][1]),
+			c_float(req["acc"][0]), c_float(req["acc"][1]),
+		]
+		libcnc.cnc_move(*args)
 		res.update({
 			"pos": req["pos"],
 			"status": "ok"
@@ -56,6 +60,8 @@ socket.bind("tcp://*:5556")
 
 poller = zmq.Poller()
 poller.register(socket, zmq.POLLOUT)
+
+libcnc.cnc_init()
 
 log.info("server started")
 
@@ -77,5 +83,7 @@ while True:
 		log.debug("sent: '%s'" % msg.decode("utf-8"))
 	else:
 		log.error("cannot send response")
+
+libcnc.cnc_quit()
 
 log.info("server stopped")

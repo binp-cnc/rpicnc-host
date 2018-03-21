@@ -5,5 +5,5 @@ def callex(args, **kwargs):
 	proc = Popen(args, **kwargs)
 	proc.wait()
 
-call(["git", "submodule", "update", "--init", "--recursive"])
+#call(["git", "submodule", "update", "--init", "--recursive"])
 callex("make", cwd=os.getcwd()+"/librpicnc")
