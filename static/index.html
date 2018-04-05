@@ -4,17 +4,92 @@
 	<meta http-equiv="content-type" content="text/html; charset=utf-8"/>
 	<title>RPi CNC</title>
 </head>
+<style type="text/css">
+	html {
+		font-family: monospace;
+	}
+</style>
 <script type="text/javascript">
 	var url = window.location;
 	var ws = new WebSocket("ws://" + url.hostname + ":" + url.port + "/ws");
 	ws.onmessage = function (event) {
 		console.log(event.data);
+		msg = JSON.parse(event.data);
+		if (msg.axis == "x") {
+			document.getElementsByName("cpos_x")[0].value = msg.pos;
+			document.getElementsByName("size_x")[0].value = msg.size;
+		} else if (msg.axis == "y") {
+			document.getElementsByName("cpos_y")[0].value = msg.pos;
+			document.getElementsByName("size_y")[0].value = msg.size;
+		}
 	};
 	ws.onopen = function (event) {
-		ws.send("Hello, WebSocket!");
+		ws.send(JSON.stringify({"type": "init"}));
+	};
+
+	window.onload = function () {
+		document.getElementById("scan_x").onclick = function () {
+			ws.send(JSON.stringify({"type": "scan", "axis": "x"}));
+		};
+		document.getElementById("scan_y").onclick = function () {
+			ws.send(JSON.stringify({"type": "scan", "axis": "y"}));
+		};
+		document.getElementById("move").onclick = function () {
+			ws.send(JSON.stringify({
+				"type": "move",
+				"pos": [document.getElementsByName("pos_x")[0].value, document.getElementsByName("pos_y")[0].value],
+				"ivel": [document.getElementsByName("ivel_x")[0].value, document.getElementsByName("ivel_y")[0].value],
+				"vel": [document.getElementsByName("vel_x")[0].value, document.getElementsByName("vel_y")[0].value],
+				"acc": [document.getElementsByName("acc_x")[0].value, document.getElementsByName("acc_y")[0].value]
+			}));
+		};
 	};
 </script>
 <body>
-	<h1>Hello, AIOHTTP!</h1>
+	<h1>RPi CNC WebSocket interface v0.1</h1>
+
+	<h2>Scan</h2>
+	<div>
+		Axis X: 
+		<input type="text" name="cpos_x" disabled />
+		<input type="text" name="size_x" disabled />
+		<button id="scan_x">Scan</button>
+	</div>
+	<div>
+		Axis Y: 
+		<input type="text" name="cpos_y" disabled />
+		<input type="text" name="size_y" disabled />
+		<button id="scan_y">Scan</button>
+	</div>
+
+	<h2>Move</h2>
+	<table>
+		<tr>
+			<td></td>
+			<td>X</td>
+			<td>Y</td>
+		</tr>
+		<tr>
+			<td>Relative position</td>
+			<td><input type="number" name="pos_x" value="0"/></td>
+			<td><input type="number" name="pos_y" value="0"/></td>
+		</tr>
+		<tr>
+			<td>Initial velocity</td>
+			<td><input type="number" name="ivel_x" value="500"/></td>
+			<td><input type="number" name="ivel_y" value="500"/></td>
+		</tr>
+		<tr>
+			<td>Target velocity</td>
+			<td><input type="number" name="vel_x" value="2000"/></td>
+			<td><input type="number" name="vel_y" value="2000"/></td>
+		</tr>
+		<tr>
+			<td>Acceleration</td>
+			<td><input type="number" name="acc_x" value="10000"/></td>
+			<td><input type="number" name="acc_y" value="10000"/></td>
+		</tr>
+	</table>
+	<div><button id="move">Move</button></div>
 </body>
 </html>
