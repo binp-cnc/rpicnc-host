@@ -3,26 +3,25 @@
 		{
 			"name": "x",
 			"motor": {
-				"step": 16,
-				"dir": 20,
+				"step": 5,
+				"dir": 6,
 				"enable": 21
 			},
 			"sens": {
-				"left": 22,
-				"right": 27,
-				"center": 17
+				"left": 18,
+				"right": 15
 			}
 		},
 		{
 			"name": "y",
 			"motor": {
-				"step": 5,
-				"dir": 6,
+				"step": 16,
+				"dir": 20,
 				"enable": 13
 			},
 			"sens": {
-				"left": 18,
-				"right": 15
+				"left": 27,
+				"right": 22
 			}
 		},
 		{
