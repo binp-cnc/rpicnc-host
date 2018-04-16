@@ -41,7 +41,7 @@ app.router.add_static("/", path="./static")
 try:
     cnc.init()
 except:
-    log.warning(traceback.format_exc())
+    log.error(traceback.format_exc())
 
 web.run_app(app)
 cnc.quit()

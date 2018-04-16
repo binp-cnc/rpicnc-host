@@ -2,37 +2,35 @@
 	"axes": [
 		{
 			"name": "x",
-			"motor": {
+			"pins": {
 				"step": 5,
 				"dir": 6,
-				"enable": 21
-			},
-			"sens": {
-				"left": 18,
-				"right": 15
+				"en": 13,
+
+				"left": 22,
+				"right": 27
 			}
 		},
 		{
 			"name": "y",
-			"motor": {
+			"pins": {
 				"step": 16,
 				"dir": 20,
-				"enable": 13
-			},
-			"sens": {
-				"left": 27,
-				"right": 22
+				"en": 21,
+
+				"left": 17,
+				"right": 18
 			}
 		},
 		{
 			"name": "z",
-			"motor": {
+			"pins": {
 				"step": 19,
 				"dir": 26,
-				"en": 12
-			},
-			"sens": {
-				"center": 14
+				"en": 12,
+
+				"left": 15,
+				"right": 14
 			}
 		}
 	]
