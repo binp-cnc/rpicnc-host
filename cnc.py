@@ -24,14 +24,14 @@ class CNC:
 		c_axesinfo = (lib.AxisInfo*len(self.config["axes"]))()
 		for i, axis in enumerate(self.config["axes"]):
 			pins = axis["pins"]
-			c_axesinfo[i] = C_AxisInfo(
+			c_axesinfo[i] = lib.AxisInfo(
 				pins["step"],
 				pins["dir"],
 				pins["left"],
 				pins["right"]
 			)
 
-		r = self._lib.cnc_init(len(c_axesinfo), ctypes.POINTER(c_axesinfo))
+		r = self._lib.cnc_init(len(c_axesinfo), c_axesinfo)
 		if r != 0:
 			raise CNCException("cnc_init error")
 

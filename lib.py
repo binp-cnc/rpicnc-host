@@ -73,39 +73,39 @@ class Cmd(Structure):
 		("_cmd", _CmdUnion),
 	]
 
-Cmd cmd_none():
-	Cmd cmd
+def cmd_none():
+	cmd = Cmd()
 	cmd.type_ = CMD_NONE
 	return cmd
 
-Cmd cmd_idle():
-	Cmd cmd
+def cmd_idle():
+	cmd = Cmd()
 	cmd.type_ = CMD_IDLE
 	return cmd
 
-Cmd cmd_wait(c_uint32 duration):
-	Cmd cmd
+def cmd_wait(duration):
+	cmd = Cmd()
 	cmd.type_ = CMD_WAIT
 	cmd._cmd.wait.duration = duration
 	return cmd
 
-Cmd cmd_sync(c_uint32 id_, c_uint32 count):
-	Cmd cmd
+def cmd_sync(id_, count):
+	cmd = Cmd()
 	cmd.type_ = CMD_SYNC
 	cmd._cmd.sync.id_ = id_
 	cmd._cmd.sync.count = count
 	return cmd
 
-Cmd cmd_move(c_uint8 dir_, c_uint32 steps, c_uint32 period):
-	Cmd cmd
+def cmd_move(dir_, steps, period):
+	cmd = Cmd()
 	cmd.type_ = CMD_MOVE
 	cmd._cmd.move.dir_ = dir_
 	cmd._cmd.move.steps = steps
 	cmd._cmd.move.period = period
 	return cmd
 
-Cmd cmd_accl(c_uint8 dir_, c_uint32 steps, c_uint32 begin_period, c_uint32 end_period):
-	Cmd cmd
+def cmd_accl(dir_, steps, begin_period, end_period):
+	cmd = Cmd()
 	cmd.type_ = CMD_ACCL
 	cmd._cmd.accl.dir_ = dir_
 	cmd._cmd.accl.steps = steps
@@ -113,8 +113,8 @@ Cmd cmd_accl(c_uint8 dir_, c_uint32 steps, c_uint32 begin_period, c_uint32 end_p
 	cmd._cmd.accl.end_period = end_period
 	return cmd
 
-Cmd cmd_sine(c_uint8 dir_, c_uint32 steps, c_uint32 begin, c_uint32 size, c_uint32 period):
-	Cmd cmd
+def cmd_sine(dir_, steps, begin, size, period):
+	cmd = Cmd()
 	cmd.type_ = CMD_SINE
 	cmd._cmd.sine.dir_ = dir_
 	cmd._cmd.sine.steps = steps
@@ -133,6 +133,13 @@ TASK_CALIB   = 0x02
 TASK_CMDS    = 0x10
 TASK_GCODE   = 0x11
 TASK_CURVE   = 0x12
+
+# task status
+TS_NONE = 0x00
+TS_WAIT = 0x01
+TS_PROC = 0x02
+TS_DONE = 0x03
+TS_ERROR = 0xF0
 
 # stop codes
 SC_DONE         = 0x01
@@ -174,6 +181,12 @@ class TaskCmds(Structure):
 		("cmds_done", c_int*MAX_AXES),
 	]
 
+class TaskGCode(Structure):
+	_fields_ = []
+
+class TaskCurve(Structure):
+	_fields_ = []
+
 class _TaskUnion(Union):
 	_fields_ = [
 		("none", TaskNone),
@@ -189,6 +202,7 @@ class Task(Structure):
 		("type_", c_int),
 		("_task", _TaskUnion),
 		# out
+		("status", c_int),
 		("stop_code", c_int),
 	]
 
@@ -208,24 +222,28 @@ class AxisInfo(Structure):
 		self.pin_left = left
 		self.pin_right = right
 
+
 ## load library
 
-def load_lib(path):
+def load(path):
 	lib = cdll.LoadLibrary(path)
 
-	lib.cnc_init.argtypes = [c_int, POINTER(C_AxisInfo)]
+	lib.cnc_init.argtypes = [c_int, POINTER(AxisInfo)]
 	lib.cnc_init.restype = c_int
 
 	lib.cnc_quit.argtypes = []
 	lib.cnc_quit.restype = c_int
 
 	# synchronous
-	lib.cnc_run_task.argtypes = [Task]
+	lib.cnc_run_task.argtypes = [POINTER(Task)]
 	lib.cnc_run_task.restype = c_int
 
 	# asynchronous
-	lib.cnc_run_task_async.argtypes = [Task]
-	lib.cnc_run_task_async.restype = c_int
+	lib.cnc_push_task.argtypes = [POINTER(Task)]
+	lib.cnc_push_task.restype = c_int
+
+	lib.cnc_run_async.argtypes = []
+	lib.cnc_run_async.restype = c_int
 
 	lib.cnc_is_busy.argtypes = []
 	lib.cnc_is_busy.restype = c_int
