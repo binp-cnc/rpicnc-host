@@ -1,3 +1,4 @@
+import sys
 import json
 import traceback
 
@@ -39,7 +40,7 @@ async def index(request):
 
 async def periodic(seconds):
     while True:
-        log.debug('periodic')
+        #log.debug('periodic')
         await asyncio.sleep(seconds)
 
 
@@ -57,6 +58,6 @@ app.router.add_static("/", path="./static")
 with open("config.json", "r") as f:
     config = json.load(f)
 
-with CNC(config) as cnc:
+with CNC(config, dummy="--dummy" in sys.argv) as cnc:
     app["cnc"] = cnc
     web.run_app(app)

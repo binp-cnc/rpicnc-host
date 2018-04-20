@@ -14,11 +14,15 @@ class CNCException(Exception):
 		super().__init__(*args, **kwargs)
 
 class CNC:
-	def __init__(self, config):
+	def __init__(self, config, dummy=False):
 		self.config = config
 		self._lib = None
+		self.dummy = dummy
 
 	def __enter__(self):
+		if self.dummy:
+			return self
+
 		self._lib = lib.load(os.getcwd() + "/librpicnc/build/cnc.so")
 		
 		c_axesinfo = (lib.AxisInfo*len(self.config["axes"]))()
@@ -38,6 +42,9 @@ class CNC:
 		return self
 
 	def __exit__(self, *args):
+		if self.dummy:
+			return 
+
 		r = self._lib.cnc_quit()
 		if r != 0:
 			raise CNCException("cnc_quit error")
@@ -45,41 +52,19 @@ class CNC:
 		self._lib = None
 
 	def handle(self, req):
-
 		res = {
 			"type": req["type"],
 			"status": "bad_type",
 		}
 
-		if req["type"] == "init":
+		if req["type"] == "connect":
 			res["status"] = "ok"
 
-		if req["type"] == "quit":
+		if req["type"] == "disconnect":
 			res["status"] = "ok"
 
-		elif req["type"] == "scan":
-			if req["axis"] == "x":
-				s = libcnc.cnc_scan_x()
-			elif req["axis"] == "y":
-				s = libcnc.cnc_scan_y()
-			res.update({
-				"axis": req["axis"],
-				"size": s,
-				"pos": 0,
-				"status": "ok"
-			})
-
-		elif req["type"] == "move":
-			args = [
-				c_int32(int(req["pos"][0])), c_int32(int(req["pos"][1])),
-				c_float(float(req["ivel"][0])), c_float(float(req["ivel"][1])),
-				c_float(float(req["vel"][0])), c_float(float(req["vel"][1])),
-				c_float(float(req["acc"][0])), c_float(float(req["acc"][1])),
-			]
-			libcnc.cnc_move(*args)
-			res.update({
-				"pos": req["pos"],
-				"status": "ok"
-			})
+		if req["type"] == "get_config":
+			res["config"] = self.config
+			res["status"] = "ok"
 
 		return res
