@@ -1,39 +1,60 @@
 html {
-	font-family: "Lucida Console", Monaco, monospace;
+	font-family: "SourceSansPro.woff", Helvetica, sans-serif;
+	font-size: 16px;
 }
 
 body {
-	background-color: #FFFFFF;
+	color: black;
+	background-color: #727272;
+	margin: 0;
 }
 
-#content {
-	border: 1px solid #000000;
+h1 {
+	font-size: 32px;
+	font-weight: 400;
+	padding: 0;
+	margin: 8px;
+}
+
+.section {
+	display: inline-block;
+	margin: 8px;
+	padding: 8px;
+	color: white;
+	background-color: #444444;
+	border-radius: 8px;
+	box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+}
+
+.section_title {
+	font-size: 24px;
+}
+
+#device_wrapper {
+	vertical-align: top;
 }
 
 #device {
-	border: 1px solid #00FF00;
 	vertical-align: top;
 	overflow: auto;
 }
 
-#canvas {
-	display: inline-block;
-	border: 1px solid #0000FF;
-}
-
 #axes {
 	display: inline-block;
-	border: 1px solid #FF0000;
+	vertical-align: top;
 }
 
 #stop_button {
 	display: inline-block;
-	width: 100px;
-	height: 100px;
-	background-color: #DD0000;
+	width: 80px;
+	height: 80px;
 	cursor: pointer;
+	background-color: #E00000;
+	border: none;
+	text-decoration: none;
 	vertical-align: top;
-	border-radius: 50px;
+	border-radius: 8px;
+	box-shadow: 0 4px 16px rgba(0,0,0,0.2);
 	float: right;
 }
 
@@ -45,17 +66,109 @@ body {
 	text-align: center;
 	color: #FFEEDD;
 	display: table-cell;
-	width: 100px;
-	height: 100px;
+	width: 80px;
+	height: 80px;
 	vertical-align: middle;
 }
 
 #stop_button_word {
-	font-weight: bold;
-	font-size: 32px;
+	font-weight: normal;
+	font-size: 24px;
 }
 
 #device_status {
 	display: inline-block;
 	vertical-align: top;
+}
+
+#canvas_wrapper {
+	display: inline-block;
+	margin: 4px;
+	padding: 0 4px 4px 4px;
+	color: black;
+	background-color: #727272;
+	border-radius: 8px;
+	box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+#canvas {
+	background-color: #363636;
+}
+
+.axis {
+	display: inline-block;
+	margin: 4px;
+	padding: 0 4px 4px 4px;
+	color: black;
+	background-color: #727272;
+	border-radius: 8px;
+	box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.axis_title {
+	font-size: 20px;
+	margin: 2px;
+	margin-top: 0;
+}
+
+.ttab {
+	display: table;
+	margin: 4px;
+}
+
+.trow {
+	display: table-row;
+}
+
+.tcell {
+	display: table-cell;
+	padding: 2px 8px;
+}
+
+.cgrp {
+	color: black;
+	border-collapse: separate;
+	border-spacing: 1px 1px;
+}
+
+.ccell {
+	background-color: #A9AAA9;
+	box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.ccell:first-child {
+	border-radius: 8px 0 0 8px;
+}
+
+.ccell:last-child {
+	border-radius: 0 8px 8px 0;
+}
+
+.cbtn {
+	display: inline-block;
+	font-size: 16px;
+	padding: 4px 8px;
+	cursor: pointer;
+	color: black;
+	background-color: #618DCF;
+	border: none;
+	text-decoration: none;
+	vertical-align: top;
+	border-radius: 8px;
+	margin: 4px;
+	box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.cbtn:active {
+	transform: scale(0.9);
+}
+
+.ccellbtn {
+	border-radius: 8px;
+	margin: 0.5px;
+	padding: none;
+}
+
+.ccellbtn_inactive {
+	background-color: #A9AAA9;
 }

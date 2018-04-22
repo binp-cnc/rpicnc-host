@@ -3,83 +3,89 @@
 <head>
 	<meta http-equiv="content-type" content="text/html; charset=utf-8"/>
 	<title>RPi CNC</title>
+	<link rel="stylesheet" href="fonts.css"/>
 	<link rel="stylesheet" href="style.css"/>
+	<script type="text/javascript" src="utils.js"></script>
 	<script type="text/javascript" src="main.js"></script>
 </head>
 <body>
 	<h1>RPi CNC WebSocket interface v0.1.1</h1>
 
-	<div id="templates">
-		<div class="axis t_axis c_Axis">
-			<h3>Axis</h3>
+	<div id="templates" style="display:none;">
+		<div class="t_axis axis">
+			<div class="axis_title">Axis <span class="t_axis_name"></span></div>
+			<div class="ttab cgrp">
+				<div class="trow">
+					<div class="tcell ccell">Position</div>
+					<div class="tcell ccell">0</div>
+				</div>
+				<div class="trow">
+					<div class="tcell ccell">Length</div>
+					<div class="tcell ccell">1000</div>
+				</div>
+			</div>
+			<div class="ttab cgrp">
+				<div class="trow">
+					<div class="tcell ccell">Velocity (initial)</div>
+					<div class="tcell ccell"><input type=number /></div>
+				</div>
+				<div class="trow">
+					<div class="tcell ccell">Velocity (max)</div>
+					<div class="tcell ccell"><input type=number /></div>
+				</div>
+				<div class="trow">
+					<div class="tcell ccell">Acceleration (max)</div>
+					<div class="tcell ccell"><input type=number /></div>
+				</div>
+			</div>
+			<button class="t_axis_scan cbtn">Scan</button>
+			<button class="t_axis_calib cbtn">Calibrate</button>
 		</div>
 	</div>
 
-	<div id="content">
+	<div id="device_wrapper" class="section">
+		<div id="device_title" class="section_title">Device</div>
 		<div id="device">
-			<div id="device_status">
-				<div>Device status: <span id="device_status_value"></span></div>
-				<div>Tasks in queue: <span id="device_status_tasks_in_queue"></span></div>
-				<div>Current task: <span id="device_status_current_task"></span></div>
-			</div>
-			<div id="stop_button" title="Push the button to force stop the device">
+			<button id="stop_button" title="Push the button to force stop the device">
 				<div id="stop_button_text">
 					<div id="stop_button_word">STOP</div>
 				</div>
+			</button>
+
+			<div id="device_status" class="ttab cgrp">
+				<div class="trow">
+					<div class="tcell ccell">Device status</div>
+					<div id="device_status_value" class="tcell ccell">Not connected</div>
+				</div>
+				<div class="trow">
+					<div class="tcell ccell">Tasks in queue</div>
+					<div id="device_status_tasks_in_queue" class="tcell ccell">0</div>
+				</div>
+				<div class="trow">
+					<div class="tcell ccell">Current task</div>
+					<div id="device_status_current_task" class="tcell ccell">None</div>
+				</div>
 			</div>
 		</div>
-		<span id="canvas">
+		<div id="axes"></div>
+	</div>
+
+	<div id="editor" class="section">
+		<div class="section_title">Path editor</div>
+		<div id="canvas_wrapper">
+			<div>
+				<div class="ttab cgrp"><div class="trow">
+					<button id="canvas_mode_2d" class="tcell ccell cbtn ccellbtn">
+						2D
+					</button><button id="canvas_mode_3d" class="tcell ccell cbtn ccellbtn ccellbtn_inactive">
+						3D
+					</button>
+				</div></div>
+			</div>
 			<canvas id="canvas" width=600 height="600">
 				Your browser doesn't support HTML5 canvas
 			</canvas>
-		</span>
-		<span id="axes">
-			
-		</span>
+		</div>
 	</div>
-
-	<h2>Scan</h2>
-	<div>
-		Axis X: 
-		<input type="text" name="cpos_x" disabled />
-		<input type="text" name="size_x" disabled />
-		<button id="scan_x">Scan</button>
-	</div>
-	<div>
-		Axis Y: 
-		<input type="text" name="cpos_y" disabled />
-		<input type="text" name="size_y" disabled />
-		<button id="scan_y">Scan</button>
-	</div>
-
-	<h2>Move</h2>
-	<table>
-		<tr>
-			<td></td>
-			<td>X</td>
-			<td>Y</td>
-		</tr>
-		<tr>
-			<td>Relative position</td>
-			<td><input type="number" name="pos_x" value="0"/></td>
-			<td><input type="number" name="pos_y" value="0"/></td>
-		</tr>
-		<tr>
-			<td>Initial velocity</td>
-			<td><input type="number" name="ivel_x" value="500"/></td>
-			<td><input type="number" name="ivel_y" value="500"/></td>
-		</tr>
-		<tr>
-			<td>Target velocity</td>
-			<td><input type="number" name="vel_x" value="2000"/></td>
-			<td><input type="number" name="vel_y" value="2000"/></td>
-		</tr>
-		<tr>
-			<td>Acceleration</td>
-			<td><input type="number" name="acc_x" value="10000"/></td>
-			<td><input type="number" name="acc_y" value="10000"/></td>
-		</tr>
-	</table>
-	<div><button id="move">Move</button></div>
 </body>
 </html>

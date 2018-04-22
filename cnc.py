@@ -17,6 +17,9 @@ class CNC:
 	def __init__(self, config, dummy=False):
 		self.config = config
 		self._lib = None
+
+		self.peer = None
+
 		self.dummy = dummy
 
 	def __enter__(self):
@@ -51,20 +54,49 @@ class CNC:
 
 		self._lib = None
 
-	def handle(self, req):
-		res = {
-			"type": req["type"],
-			"status": "bad_type",
-		}
+	def poll(self):
+		pass
 
-		if req["type"] == "connect":
-			res["status"] = "ok"
+	def disconnect(self, peer):
+		if peer is self.peer:
+			self.peer = None
 
-		if req["type"] == "disconnect":
-			res["status"] = "ok"
+	def handle(self, peer, req):
+		print(req)
+		
+		if req["action"] == "connect":
+			if self.peer is None:
+				self.peer = peer
+			if peer is self.peer:
+				peer.send({"action": "accept"})
+			else:
+				peer.send({
+					"action": "refuse", 
+					"reason": "another_connection"
+				})
+			return
 
-		if req["type"] == "get_config":
-			res["config"] = self.config
-			res["status"] = "ok"
+		if peer is not self.peer:
+			return
 
-		return res
+		if req["action"] == "disconnect":
+			self.disconnect(peer)
+			return
+
+		if req["action"] == "get_config":
+			peer.send({
+				"action": "set_config",
+				"config": self.config
+			})
+			return
+
+		if req["action"] == "get_device_status":
+			peer.send({
+				"device_status": "idle"
+			})
+			return
+
+		if req["action"] == "stop_device":
+			if not self.dummy:
+				self._lib.cnc_stop()
+			return
