@@ -22,6 +22,32 @@ class CNC:
 
 		self.dummy = dummy
 
+		self.cache = None
+		self.load_cache();
+
+	def load_cache(self):
+		try:
+			with open("cache.json", "r") as f:
+				self.cache = json.load(f);
+		except (OSError, IOError, json.JSONDecodeError) as e:
+			self.cache = {
+				"axes": []
+			}
+			for ax in self.config["axes"]:
+				self.cache["axes"].append({
+					"pos": 0,
+					"len": 1000,
+					"vel_init": 100,
+					"vel_max": 500,
+					"acc_max": 1000
+				});
+
+		self.store_cache()
+
+	def store_cache(self):
+		with open("cache.json", "w") as f:
+			json.dump(self.cache, f, indent="\t")
+
 	def __enter__(self):
 		if self.dummy:
 			return self
@@ -87,6 +113,13 @@ class CNC:
 			peer.send({
 				"action": "set_config",
 				"config": self.config
+			})
+			return
+
+		if req["action"] == "get_cache":
+			peer.send({
+				"action": "set_cache",
+				"cache": self.cache
 			})
 			return
 

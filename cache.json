@@ -1,22 +1,25 @@
 {
 	"axes": [
 		{
-			"length": null,
-			"vel_init": null,
-			"vel_max": null,
-			"acc_max": null
+			"pos": 0,
+			"len": 1000,
+			"vel_init": 500.0,
+			"vel_max": 2000.0,
+			"acc_max": 10000.0
 		},
 		{
-			"length": null,
-			"vel_init": null,
-			"vel_max": null,
-			"acc_max": null
+			"pos": 0,
+			"len": 1000,
+			"vel_init": 500.0,
+			"vel_max": 2000.0,
+			"acc_max": 10000.0
 		},
 		{
-			"length": null,
-			"vel_init": null,
-			"vel_max": null,
-			"acc_max": null
+			"pos": 0,
+			"len": 1000,
+			"vel_init": 500.0,
+			"vel_max": 2000.0,
+			"acc_max": 10000.0
 		}
 	]
 }

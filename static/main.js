@@ -5,7 +5,7 @@ Item.prototype.constructor = Item;
 
 function Button(elem, action) {
 	Item.call(this, elem);
-	this.action = action.bind(this);
+	this.action = action;
 	this.elem.addEventListener("click", this.action);
 }
 Button.prototype = Object.create(Item.prototype);
@@ -15,10 +15,6 @@ function ButtonExt(elem, actions) {
 	Item.call(this, elem);
 
 	this.actions = actions;
-	map_dict(this.actions, function (k, v) {
-		this.actions[k] = v.bind(this);
-	}.bind(this));
-
 	map_dict(this.actions, function (k, v) {
 		this.elem.addEventListener(k, v);
 	}.bind(this));
@@ -47,7 +43,7 @@ ToggleButton.prototype.setValue = function (v) {
 
 function Label(elem, update) {
 	Item.call(this, elem);
-	this.update = update.bind(this);
+	this.update = update;
 }
 Label.prototype = Object.create(Item.prototype);
 Label.prototype.constructor = Label;
@@ -65,88 +61,152 @@ Axis.prototype = Object.create(Item.prototype);
 Axis.prototype.constructor = Axis;
 
 
-function wssetup(actions) {
-	var url = window.location;
-	var ws = new WebSocket("ws://" + url.hostname + ":" + url.port + "/ws");
-	if (!ws) {
-		alert("Your browser doesn't support WebSockets");
-	}
-	map_dict(actions, function (k, v) {
-		ws.addEventListener(k, v);
-	});
-	return ws;
+Stage = {
+	INIT: 0,
+	CONFIG: 1,
+	OPERATE: 2
+};
+
+function App() {
+	this.ws = null;
+	this.wscbs = {};
+	this.wswd = null;
+
+	this.items = {};
+	this.stage = Stage.INIT;
+	this.config = {};
+	this.cache = {};
 }
+App.prototype.constructor = App;
 
-
-STAGE_INIT = 0;
-STAGE_CONFIG = 1;
-STAGE_OPERATE = 2;
-
-window.onload = function () {
-	var stage = STAGE_INIT;
-	var config = {};
-
-	items = {};
-
+App.prototype.init = function () {
 	var device = {};
 	var stop = function () {
 		console.log("stop_button: down");
-		ws.send(JSON.stringify({"action": "stop_device"}));
-	};
-	device["stop_button"] = new ButtonExt(eid("stop_button"), {"mousedown": stop, "click": stop});
-	device["device_status"] = new Label(eid("device_status"), function (value) {
-		this.innerText = value;
-	});
-	items["device"] = device;
+		this.send({"action": "stop_device"});
+	}.bind(this);
+	device.stop_button = new ButtonExt(eid("stop_button"), {"mousedown": stop, "click": stop});
+	device.device_status = new Label(eid("device_status"), function (value) {
+		this.items.device.device_status.innerText = value;
+	}.bind(this));
+	this.items["device"] = device;
 
 	var editor = {
 		"mode": {
 			"2d": new Button(eid("canvas_mode_2d"), function () {
-				this.elem.classList.remove("ccellbtn_inactive");
-				editor["mode"]["3d"].elem.classList.add("ccellbtn_inactive");
-			}),
+				this.items.editor.mode["2d"].elem.classList.remove("ccellbtn_inactive");
+				this.items.editor.mode["3d"].elem.classList.add("ccellbtn_inactive");
+			}.bind(this)),
 			"3d": new Button(eid("canvas_mode_3d"), function () {
-				this.elem.classList.remove("ccellbtn_inactive");
-				editor["mode"]["2d"].elem.classList.add("ccellbtn_inactive");
-			})
+				this.items.editor.mode["2d"].elem.classList.add("ccellbtn_inactive");
+				this.items.editor.mode["3d"].elem.classList.remove("ccellbtn_inactive");
+			}.bind(this))
 		}
 	};
-	items["editor"] = editor;
+	this.items["editor"] = editor;
 
-	var ws = wssetup({
+	this.wscbs = {
 		"message": function (event) {
 			console.log(event.data);
 			msg = JSON.parse(event.data);
-			if (stage == STAGE_INIT) {
+			if (this.stage == Stage.INIT) {
 				if (msg["action"] == "accept") {
-					stage = STAGE_CONFIG;
+					this.stage = Stage.CONFIG;
 					console.log("successfully connected");
-					ws.send(JSON.stringify({"action": "get_config"}));
+					this.send({"action": "get_config"});
 				} else if (msg["action"] == "refuse") {
 					console.error("connection error: " + msg["reason"]);
 				}
-			} else if (stage == STAGE_CONFIG) {
+			} else if (this.stage == Stage.CONFIG) {
 				if (msg["action"] == "set_config") {
-					var config = msg["config"];
+					this.config = msg["config"];
 
+					console.log("axes");
 					var axcon = eid("axes");
 					clear(axcon);
-					items.axes = map(config["axes"], function (i, ac) {
+					this.items.axes = map(this.config["axes"], function (i, ac) {
 						var elem = template("t_axis");
 						axcon.appendChild(elem);
 						var axis = new Axis(elem, ac);
 						return axis;
 					});
 
-					stage = STAGE_OPERATE;
+					this.stage = Stage.OPERATE;
 					console.log("config received");
 				}
-			} else if (stage == STAGE_OPERATE) {
+			} else if (this.stage == Stage.OPERATE) {
 
 			}
-		},
-		"open": function (event){
-			ws.send(JSON.stringify({"action": "connect"}));
-		}
-	});
+		}.bind(this),
+		"open": function (event) {
+			console.log("ws open");
+			this.send({"action": "connect"});
+		}.bind(this),
+		"close": function (event) {
+			console.log("ws close");
+		}.bind(this),
+		"error": function (event) {
+			console.log("ws error");
+		}.bind(this)
+	};
 };
+
+App.prototype.quit = function () {
+	this.send({"action": "disconnect"});
+	this.disconnect();
+
+	this.ws = null;
+	this.items = {};
+	this.stage = Stage.INIT;
+	this.config = {};
+	this.cache = {};
+};
+
+App.prototype.connect = function () {
+	this.disconnect();
+
+	var url = window.location;
+	var ws = new WebSocket("ws://" + url.hostname + ":" + url.port + "/ws");
+	if (!ws) {
+		console.error("Your browser doesn't support WebSockets");
+	}
+	map_dict(this.wscbs, function (k, v) {
+		ws.addEventListener(k, v);
+	});
+	
+	this.ws = ws;
+};
+
+App.prototype.disconnect = function () {
+	if (this.ws && this.ws.readyState < 2) {
+		this.ws.close();
+	}
+};
+
+App.prototype.send = function (message) {
+	if (this.ws && this.ws.readyState < 2) {
+		this.ws.send(JSON.stringify(message))
+	}
+};
+
+App.prototype.run = function () {
+	var startConnect = function () {
+		if (!this.ws || this.ws.readyState != 1) {
+			this.disconnect();
+			this.connect();
+		}
+		return setTimeout(startConnect, 10000);
+	}.bind(this);
+	this.wswd = startConnect();
+};
+
+app = new App();
+
+window.addEventListener("load", function() {
+	app.init();
+	app.run();
+}.bind(app));
+
+window.addEventListener("beforeunload", function () {
+	app.quit();
+}.bind(app));
