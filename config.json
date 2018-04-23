@@ -3,8 +3,8 @@
 		{
 			"name": "x",
 			"pins": {
-				"step": 5,
-				"dir": 6,
+				"step": 16,
+				"dir": 20,
 				"en": 13,
 
 				"left": 22,
@@ -14,8 +14,8 @@
 		{
 			"name": "y",
 			"pins": {
-				"step": 16,
-				"dir": 20,
+				"step": 5,
+				"dir": 6,
 				"en": 21,
 
 				"left": 17,
@@ -29,8 +29,8 @@
 				"dir": 26,
 				"en": 12,
 
-				"left": 15,
-				"right": 14
+				"left": 14,
+				"right": 15
 			}
 		}
 	]

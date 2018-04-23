@@ -56,7 +56,11 @@ async def index(request):
 
 async def periodic(app, seconds):
     while True:
-        app["cnc"].poll()
+        try:
+            app["cnc"].poll()
+        except:
+            log.warning("error handle request")
+            log.warning(traceback.format_exc())
         await asyncio.sleep(seconds)
 
 
@@ -70,7 +74,7 @@ app.add_routes([
 app.router.add_static("/", path="./static")
 app["loop"] = loop
 
-asyncio.ensure_future(periodic(app, 0.1), loop=loop)
+asyncio.ensure_future(periodic(app, 1.0), loop=loop)
 
 
 with open("config.json", "r") as f:

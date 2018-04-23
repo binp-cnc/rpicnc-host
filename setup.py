@@ -16,5 +16,3 @@ if all_ or "--git" in sys.argv:
 if all_ or "--make" in sys.argv:
 	callex("make", cwd=os.getcwd()+"/librpicnc")
 
-if all_ or "--pip" in sys.argv:
-	call(["sudo", "pip3", "install", "aiohttp"])

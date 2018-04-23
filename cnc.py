@@ -1,5 +1,6 @@
 import os
 import json
+from queue import Queue
 
 import ctypes
 
@@ -16,7 +17,7 @@ class CNCException(Exception):
 class CNC:
 	def __init__(self, config, dummy=False):
 		self.config = config
-		self._lib = None
+		self.lib = None
 
 		self.peer = None
 
@@ -26,6 +27,9 @@ class CNC:
 		self.load_cache();
 
 		self.sens = 0;
+		self.updstat = False;
+
+		self.task_queue = Queue()
 
 	def load_cache(self):
 		try:
@@ -54,7 +58,7 @@ class CNC:
 		if self.dummy:
 			return self
 
-		self._lib = lib.load(os.getcwd() + "/librpicnc/build/cnc.so")
+		self.lib = lib.load(os.getcwd() + "/librpicnc/build/cnc.so")
 		
 		c_axesinfo = (lib.AxisInfo*len(self.config["axes"]))()
 		for i, axis in enumerate(self.config["axes"]):
@@ -66,7 +70,7 @@ class CNC:
 				pins["right"]
 			)
 
-		r = self._lib.cnc_init(len(c_axesinfo), c_axesinfo)
+		r = self.lib.cnc_init(len(c_axesinfo), c_axesinfo)
 		if r != 0:
 			raise CNCException("cnc_init error")
 
@@ -76,11 +80,11 @@ class CNC:
 		if self.dummy:
 			return 
 
-		r = self._lib.cnc_quit()
+		r = self.lib.cnc_quit()
 		if r != 0:
 			raise CNCException("cnc_quit error")
 
-		self._lib = None
+		self.lib = None
 
 	def _decode_sensors(self, sens):
 		ss = [(sens>>(2*i))&3 for i in range(len(self.config["axes"]))]
@@ -90,15 +94,48 @@ class CNC:
 		if self.peer is None:
 			return
 
+		# check sensors state
 		sens = 0
 		if not self.dummy:
-			sens = int(self._lib.cnc_read_sensors());
+			sens = int(self.lib.cnc_read_sensors());
 		if sens != self.sens:
 			self.peer.send({
 				"action": "set_sensors",
 				"sensors": self._decode_sensors(sens),
 			});
 			self.sens = sens
+
+		# check for complete tasks
+		rts = 0
+		if not self.dummy:
+			rts = self.lib.cnc_is_busy()
+		qts = self.task_queue.qsize()
+		for i in range(qts - rts):
+			ti, task = self.task_queue.get_nowait()
+			self.updstat = True
+
+			rt = {
+				"id": ti["id"],
+				"type": ti["type"]
+			}
+			res = {
+				"action": "complete_task",
+				"task": rt
+			}
+
+			if ti["type"] == "scan":
+				rt["axis"] = ti["axis"]
+				rt["length"] = task._task.scan.length
+
+			self.peer.send(res)
+
+		# send status
+		if self.updstat:
+			self.peer.send({
+				"action": "set_tasks",
+				"count": self.task_queue.qsize()
+			})
+			self.updstat = False
 
 	def disconnect(self, peer):
 		if peer is self.peer:
@@ -140,14 +177,17 @@ class CNC:
 			})
 			return
 
+		if req["action"] == "sync_cache":
+			cache = req["cache"]
+			for sc, c in zip(self.cache["axes"], cache["axes"]):
+				sc.update(c)
+			self.store_cache()
+			return
+
 		if req["action"] == "get_tasks":
-			count = 0
-			if not self.dummy:
-				count = self._lib.cnc_is_busy()
 			peer.send({
 				"action": "set_tasks",
-				"count": count,
-				"current": "none"
+				"count": self.task_queue.qsize()
 			})
 			return
 
@@ -160,5 +200,31 @@ class CNC:
 
 		if req["action"] == "stop_device":
 			if not self.dummy:
-				self._lib.cnc_stop()
+				self.lib.cnc_stop()
+			while self.task_queue.qsize() > 0:
+				self.task_queue.get_nowait()
+			self.updstat = True
+			return
+
+		if req["action"] == "run_task":
+			ti = req["task"]
+			
+			if ti["type"] == "scan":
+				ac = self.cache["axes"][ti["axis"]]
+				print(ac)
+				task = lib.Task(
+					lib.TASK_SCAN,
+					ti["axis"],
+					ac["vel_init"],
+					ac["vel_max"],
+					ac["acc_max"]
+				)
+				print(task._task.scan.vel_ini)
+
+			self.task_queue.put_nowait((ti, task))
+			if not self.dummy:
+				self.lib.cnc_push_task(task)
+				self.lib.cnc_run_async()
+			self.updstat = True
+
 			return

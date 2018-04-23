@@ -150,27 +150,45 @@ SC_USER_STOP    = 0x20
 class TaskNone(Structure):
 	_fields_ = []
 
+	def __init__(self):
+		super().__init__()
+
 class TaskScan(Structure):
 	_fields_ = [
 		# in
 		("axis", c_int),
-		("t_ivel", c_int),
-		("t_vel", c_int),
-		("tt_acc", c_int),
+		("vel_ini", c_float),
+		("vel_max", c_float),
+		("acc_max", c_float),
 		# out
 		("length", c_int),
 	]
+
+	def __init__(self, axis, vel_ini, vel_max, acc_max):
+		super().__init__()
+		self.axis = c_int(axis)
+		self.vel_ini = c_float(vel_ini)
+		self.vel_max = c_float(vel_max)
+		self.acc_max = c_float(acc_max)
+		self.length = c_int(0)
 
 class TaskCalib(Structure):
 	_fields_ = [
 		# in
 		("axis", c_int),
-		("it_ivel", c_int),
+		# inout
+		("vel_ini", c_float),
 		# out
-		("t_ivel", c_int),
-		("t_vel", c_int),
-		("tt_acc", c_int),
+		("vel_max", c_float),
+		("acc_max", c_float),
 	]
+
+	def __init__(self, axis, vel_ini):
+		super().__init__()
+		self.axis = c_int(axis)
+		self.vel_ini = c_float(vel_ini)
+		self.vel_max = c_float(0.0)
+		self.acc_max = c_float(0.0)
 
 class TaskCmds(Structure):
 	_fields_ = [
@@ -181,17 +199,29 @@ class TaskCmds(Structure):
 		("cmds_done", c_int*MAX_AXES),
 	]
 
+	def __init__(self, cmds_count, cmds):
+		super().__init__()
+		self.cmds_count = cmds_count
+		self.cmds = cmds
+		self.cmds_done = c_int(0)
+
 class TaskGCode(Structure):
 	_fields_ = []
+
+	def __init__(self):
+		super().__init__()
 
 class TaskCurve(Structure):
 	_fields_ = []
 
+	def __init__(self):
+		super().__init__()
+
 class _TaskUnion(Union):
 	_fields_ = [
 		("none", TaskNone),
-		("calib", TaskCalib),
 		("scan", TaskScan),
+		("calib", TaskCalib),
 		("cmds", TaskCmds),
 		("gcode", TaskGCode),
 		("curve", TaskCurve),
@@ -205,6 +235,22 @@ class Task(Structure):
 		("status", c_int),
 		("stop_code", c_int),
 	]
+
+	def __init__(self, type_, *args):
+		super().__init__()
+		self.type_ = type_
+		if type_ == TASK_NONE:
+			self._task.none.__init__(*args)
+		elif type_ == TASK_SCAN:
+			self._task.scan.__init__(*args)
+		elif type_ == TASK_CALIB:
+			self._task.calib.__init__(*args)
+		elif type_ == TASK_CMDS:
+			self._task.cmds.__init__(*args)
+		elif type_ == TASK_GCODE:
+			self._task.gcode.__init__(*args)
+		elif type_ == TASK_CURVE:
+			self._task.curve.__init__(*args)
 
 ## main.h
 
@@ -234,9 +280,15 @@ def load(path):
 	lib.cnc_quit.argtypes = []
 	lib.cnc_quit.restype = c_int
 
+	lib.cnc_clear.argtypes = []
+	lib.cnc_clear.restype = c_int
+
 	# synchronous
 	lib.cnc_run_task.argtypes = [POINTER(Task)]
 	lib.cnc_run_task.restype = c_int
+
+	lib.cnc_read_sensors.argtypes = []
+	lib.cnc_read_sensors.restype = c_int
 
 	# asynchronous
 	lib.cnc_push_task.argtypes = [POINTER(Task)]
@@ -247,6 +299,9 @@ def load(path):
 
 	lib.cnc_is_busy.argtypes = []
 	lib.cnc_is_busy.restype = c_int
+
+	lib.cnc_wait.argtypes = []
+	lib.cnc_wait.restype = c_int
 
 	lib.cnc_stop.argtypes = []
 	lib.cnc_stop.restype = c_int

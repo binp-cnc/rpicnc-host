@@ -49,17 +49,63 @@ Label.prototype = Object.create(Item.prototype);
 Label.prototype.constructor = Label;
 
 
-function Axis(elem, config) {
+function Axis(app, elem, num, config) {
 	Item.call(this, elem);
+	this.app = app;
+	this.num = num;
 	this.config = config ? config : {};
 
 	if (this.config["name"]) {
 		ecl(this.elem, "t_axis_name").innerText = this.config["name"].toUpperCase();
 	}
+
+	this.scan = new Button(ecl(this.elem, "t_axis_scan"), function () {
+		this.app.send({
+			"action": "run_task",
+			"task": {
+				"id": 0,
+				"type": "scan",
+				"axis": this.num
+			}
+		});
+	}.bind(this));
+
+	this.calib = new Button(ecl(this.elem, "t_axis_calib"), function () {
+		this.app.send({
+			"action": "run_task",
+			"task": {
+				"id": 0,
+				"type": "calib",
+				"axis": this.num
+			}
+		});
+	}.bind(this));
 }
 Axis.prototype = Object.create(Item.prototype);
 Axis.prototype.constructor = Axis;
 
+Axis.prototype.getCache = function (cache) {
+	var cache = {
+		"pos": ecl(this.elem, "t_pos").innerText,
+		"len": ecl(this.elem, "t_len").innerText,
+		"vel_init": ecl(this.elem, "t_vel_init").value,
+		"vel_max": ecl(this.elem, "t_vel_max").value,
+		"acc_max": ecl(this.elem, "t_acc_max").value
+	};
+	return cache;
+};
+Axis.prototype.setCache = function (cache) {
+	ecl(this.elem, "t_pos").innerText = cache["pos"];
+	ecl(this.elem, "t_len").innerText = cache["len"];
+	ecl(this.elem, "t_vel_init").value = cache["vel_init"];
+	ecl(this.elem, "t_vel_max").value = cache["vel_max"];
+	ecl(this.elem, "t_acc_max").value = cache["acc_max"];
+};
+
+Axis.prototype.setSensors = function (sens) {
+	ecl(this.elem, "t_sens_left").classList[sens[0] ? "add" : "remove"]("ccell_active");
+	ecl(this.elem, "t_sens_right").classList[sens[1] ? "add" : "remove"]("ccell_active");
+};
 
 Stage = {
 	INIT: 0,
@@ -134,9 +180,9 @@ App.prototype.init = function () {
 					this.items.axes = map(this.config["axes"], function (i, ac) {
 						var elem = template("t_axis");
 						axcon.appendChild(elem);
-						var axis = new Axis(elem, ac);
+						var axis = new Axis(this, elem, i, ac);
 						return axis;
-					});
+					}.bind(this));
 
 					this.stage = Stage.OPERATE;
 					console.log("config received");
@@ -147,13 +193,8 @@ App.prototype.init = function () {
 				}
 			} else if (this.stage == Stage.OPERATE) {
 				if (msg["action"] == "set_cache") {
-					var caxes = msg["cache"]["axes"];
 					map(this.items.axes, function (i, ax) {
-						ecl(ax.elem, "t_pos").innerText = caxes[i]["pos"];
-						ecl(ax.elem, "t_len").innerText = caxes[i]["len"];
-						ecl(ax.elem, "t_vel_init").value = caxes[i]["vel_init"];
-						ecl(ax.elem, "t_vel_max").value = caxes[i]["vel_max"];
-						ecl(ax.elem, "t_acc_max").value = caxes[i]["acc_max"];
+						ax.setCache(msg["cache"]["axes"][i]);
 					}.bind(this));
 				} else if (msg["action"] == "set_tasks") {
 					if (msg["count"] == 0) {
@@ -166,9 +207,15 @@ App.prototype.init = function () {
 				} else if (msg["action"] == "set_sensors") {
 					var sens = msg["sensors"];
 					map(this.items.axes, function (i, ax) {
-						ecl(ax.elem, "t_sens_left").classList[sens[i][0] ? "add" : "remove"]("ccell_active");
-						ecl(ax.elem, "t_sens_right").classList[sens[i][1] ? "add" : "remove"]("ccell_active");
+						ax.setSensors(sens[i]);
 					}.bind(this));
+				} else if (msg["action"] == "complete_task") {
+					var task = msg["task"];
+					if (task["type"] == "scan") {
+						// TODO: move to axis
+						ecl(this.items["axes"][task["axis"]].elem, "t_pos").innerText = 0;
+						ecl(this.items["axes"][task["axis"]].elem, "t_len").innerText = task["length"];
+					}
 				}
 			}
 		}.bind(this),
