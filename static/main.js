@@ -76,6 +76,13 @@ function App() {
 	this.stage = Stage.INIT;
 	this.config = {};
 	this.cache = {};
+
+	this.Status = {
+		"ERROR": 0,
+		"WARNING": 1,
+		"IDLE": 2,
+		"BUSY": 3
+	};
 }
 App.prototype.constructor = App;
 
@@ -133,9 +140,36 @@ App.prototype.init = function () {
 
 					this.stage = Stage.OPERATE;
 					console.log("config received");
+
+					this.send({"action": "get_cache"});
+					this.send({"action": "get_tasks"});
+					this.send({"action": "get_sensors"});
 				}
 			} else if (this.stage == Stage.OPERATE) {
-
+				if (msg["action"] == "set_cache") {
+					var caxes = msg["cache"]["axes"];
+					map(this.items.axes, function (i, ax) {
+						ecl(ax.elem, "t_pos").innerText = caxes[i]["pos"];
+						ecl(ax.elem, "t_len").innerText = caxes[i]["len"];
+						ecl(ax.elem, "t_vel_init").value = caxes[i]["vel_init"];
+						ecl(ax.elem, "t_vel_max").value = caxes[i]["vel_max"];
+						ecl(ax.elem, "t_acc_max").value = caxes[i]["acc_max"];
+					}.bind(this));
+				} else if (msg["action"] == "set_tasks") {
+					if (msg["count"] == 0) {
+						this.setStatus(this.Status.IDLE, "Idle");
+					} else {
+						this.setStatus(this.Status.BUSY, "Busy");
+					}
+					eid("device_status_tasks_in_queue").innerText = msg["count"];
+					eid("device_status_current_task").innerText = msg["current"];
+				} else if (msg["action"] == "set_sensors") {
+					var sens = msg["sensors"];
+					map(this.items.axes, function (i, ax) {
+						ecl(ax.elem, "t_sens_left").classList[sens[i][0] ? "add" : "remove"]("ccell_active");
+						ecl(ax.elem, "t_sens_right").classList[sens[i][1] ? "add" : "remove"]("ccell_active");
+					}.bind(this));
+				}
 			}
 		}.bind(this),
 		"open": function (event) {
@@ -144,11 +178,30 @@ App.prototype.init = function () {
 		}.bind(this),
 		"close": function (event) {
 			console.log("ws close");
+			this.setStatus(this.Status.ERROR, "Not connected");
 		}.bind(this),
 		"error": function (event) {
 			console.log("ws error");
+			this.setStatus(this.Status.ERROR, "Error");
 		}.bind(this)
 	};
+};
+
+App.prototype.setStatus = function (stat, info) {
+	var elem = eid("device_status_value");
+	map(["ccol_good", "ccol_warn", "ccol_error", "ccell_active"], function (i, col) {
+		elem.classList.remove(col);
+	}.bind(this));
+	if (stat == this.Status.ERROR) {
+		elem.classList.add("ccol_error");
+	} else if (stat == this.Status.WARNING) {
+		elem.classList.add("ccol_warn");
+	} else if (stat == this.Status.IDLE) {
+		elem.classList.add("ccol_good");
+	} else if (stat == this.Status.BUSY) {
+		elem.classList.add("ccell_active");
+	}
+	elem.innerText = info;
 };
 
 App.prototype.quit = function () {
@@ -181,6 +234,7 @@ App.prototype.disconnect = function () {
 	if (this.ws && this.ws.readyState < 2) {
 		this.ws.close();
 	}
+	this.stage = Stage.INIT;
 };
 
 App.prototype.send = function (message) {

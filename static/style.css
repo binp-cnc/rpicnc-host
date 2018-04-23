@@ -48,6 +48,7 @@ h1 {
 	display: inline-block;
 	width: 80px;
 	height: 80px;
+	margin: 4px;
 	cursor: pointer;
 	background-color: #E00000;
 	border: none;
@@ -167,6 +168,22 @@ h1 {
 	border-radius: 8px;
 	margin: 0.5px;
 	padding: none;
+}
+
+.ccell_active {
+	background-color: #618DCF;
+}
+
+.ccol_good {
+	background-color: #a3d661;
+}
+
+.ccol_warn {
+	background-color: #fde071;
+}
+
+.ccol_error {
+	background-color: #e06868;
 }
 
 .ccellbtn_inactive {

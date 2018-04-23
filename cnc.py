@@ -25,6 +25,8 @@ class CNC:
 		self.cache = None
 		self.load_cache();
 
+		self.sens = 0;
+
 	def load_cache(self):
 		try:
 			with open("cache.json", "r") as f:
@@ -80,8 +82,23 @@ class CNC:
 
 		self._lib = None
 
+	def _decode_sensors(self, sens):
+		ss = [(sens>>(2*i))&3 for i in range(len(self.config["axes"]))]
+		return [(s&1, s>>1) for s in ss]
+
 	def poll(self):
-		pass
+		if self.peer is None:
+			return
+
+		sens = 0
+		if not self.dummy:
+			sens = int(self._lib.cnc_read_sensors());
+		if sens != self.sens:
+			self.peer.send({
+				"action": "set_sensors",
+				"sensors": self._decode_sensors(sens),
+			});
+			self.sens = sens
 
 	def disconnect(self, peer):
 		if peer is self.peer:
@@ -123,10 +140,22 @@ class CNC:
 			})
 			return
 
-		if req["action"] == "get_device_status":
+		if req["action"] == "get_tasks":
+			count = 0
+			if not self.dummy:
+				count = self._lib.cnc_is_busy()
 			peer.send({
-				"device_status": "idle"
+				"action": "set_tasks",
+				"count": count,
+				"current": "none"
 			})
+			return
+
+		if req["action"] == "get_sensors":
+			self.peer.send({
+				"action": "set_sensors",
+				"sensors": self._decode_sensors(self.sens),
+			});
 			return
 
 		if req["action"] == "stop_device":

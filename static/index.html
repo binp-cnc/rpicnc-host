@@ -17,25 +17,31 @@
 			<div class="ttab cgrp">
 				<div class="trow">
 					<div class="tcell ccell">Position</div>
-					<div class="tcell ccell">0</div>
+					<div class="t_pos tcell ccell">0</div>
 				</div>
 				<div class="trow">
 					<div class="tcell ccell">Length</div>
-					<div class="tcell ccell">1000</div>
+					<div class="t_len tcell ccell">1000</div>
+				</div>
+			</div>
+			<div class="ttab cgrp">
+				<div class="trow">
+					<div class="t_sens_left tcell ccell">Left sensor</div>
+					<div class="t_sens_right tcell ccell">Right sensor</div>
 				</div>
 			</div>
 			<div class="ttab cgrp">
 				<div class="trow">
 					<div class="tcell ccell">Velocity (initial)</div>
-					<div class="tcell ccell"><input type=number /></div>
+					<div class="tcell ccell"><input type=number class="t_vel_init" /></div>
 				</div>
 				<div class="trow">
 					<div class="tcell ccell">Velocity (max)</div>
-					<div class="tcell ccell"><input type=number /></div>
+					<div class="tcell ccell"><input type=number class="t_vel_max" /></div>
 				</div>
 				<div class="trow">
 					<div class="tcell ccell">Acceleration (max)</div>
-					<div class="tcell ccell"><input type=number /></div>
+					<div class="tcell ccell"><input type=number class="t_acc_max" /></div>
 				</div>
 			</div>
 			<button class="t_axis_scan cbtn">Scan</button>
@@ -55,7 +61,7 @@
 			<div id="device_status" class="ttab cgrp">
 				<div class="trow">
 					<div class="tcell ccell">Device status</div>
-					<div id="device_status_value" class="tcell ccell">Not connected</div>
+					<div id="device_status_value" class="tcell ccell ccol_error">Not connected</div>
 				</div>
 				<div class="trow">
 					<div class="tcell ccell">Tasks in queue</div>
