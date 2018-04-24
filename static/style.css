@@ -30,21 +30,17 @@ h1 {
 	font-size: 24px;
 }
 
-#device_wrapper {
-	vertical-align: top;
-}
-
-#device {
+.device_properties {
 	vertical-align: top;
 	overflow: auto;
 }
 
-#axes {
+.axes {
 	display: inline-block;
 	vertical-align: top;
 }
 
-#stop_button {
+.stop_button {
 	display: inline-block;
 	width: 80px;
 	height: 80px;
@@ -59,25 +55,22 @@ h1 {
 	float: right;
 }
 
-#stop_button:active {
+.stop_button:active {
 	transform: scale(0.9);
 }
 
-#stop_button_text {
+.stop_button_text {
 	text-align: center;
 	color: #FFEEDD;
 	display: table-cell;
 	width: 80px;
 	height: 80px;
 	vertical-align: middle;
-}
-
-#stop_button_word {
 	font-weight: normal;
 	font-size: 24px;
 }
 
-#device_status {
+.device_status {
 	display: inline-block;
 	vertical-align: top;
 }

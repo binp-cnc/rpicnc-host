@@ -5,14 +5,16 @@
 	<title>RPi CNC</title>
 	<link rel="stylesheet" href="fonts.css"/>
 	<link rel="stylesheet" href="style.css"/>
-	<script type="text/javascript" src="utils.js"></script>
+	<script type="text/javascript" src="util.js"></script>
+	<script type="text/javascript" src="item.js"></script>
 	<script type="text/javascript" src="main.js"></script>
 </head>
 <body>
 	<h1>RPi CNC WebSocket interface v0.1.1</h1>
 
 	<div id="templates" style="display:none;">
-		<div class="t_axis axis">
+		<!-- Axis elem template -->
+		<div class="T_Axis axis">
 			<div class="axis_title">Axis <span class="t_axis_name"></span></div>
 			<div class="ttab cgrp">
 				<div class="trow">
@@ -47,36 +49,36 @@
 			<button class="t_axis_scan cbtn">Scan</button>
 			<button class="t_axis_calib cbtn">Calibrate</button>
 		</div>
-	</div>
 
-	<div id="device_wrapper" class="section">
-		<div id="device_title" class="section_title">Device</div>
-		<div id="device">
-			<button id="stop_button" title="Push the button to force stop the device">
-				<div id="stop_button_text">
-					<div id="stop_button_word">STOP</div>
-				</div>
-			</button>
+		<!-- Device elem template -->
+		<div class="T_Device device section">
+			<div class="t_device_title section_title">Device</div>
+			<div class="device_properties">
+				<button class="t_stop_button stop_button" title="Push the button to force stop the device">
+					<div class="stop_button_text">STOP</div>
+				</button>
 
-			<div id="device_status" class="ttab cgrp">
-				<div class="trow">
-					<div class="tcell ccell">Device status</div>
-					<div id="device_status_value" class="tcell ccell ccol_error">Not connected</div>
-				</div>
-				<div class="trow">
-					<div class="tcell ccell">Tasks in queue</div>
-					<div id="device_status_tasks_in_queue" class="tcell ccell">0</div>
-				</div>
-				<div class="trow">
-					<div class="tcell ccell">Current task</div>
-					<div id="device_status_current_task" class="tcell ccell">None</div>
+				<div class="device_status ttab cgrp">
+					<div class="trow">
+						<div class="tcell ccell">Device status</div>
+						<div class="t_device_status_value tcell ccell ccol_error">Not connected</div>
+					</div>
+					<div class="trow">
+						<div class="tcell ccell">Tasks in queue</div>
+						<div class="t_device_status_tasks_in_queue tcell ccell">0</div>
+					</div>
+					<div class="trow">
+						<div class="tcell ccell">Current task</div>
+						<div class="t_device_status_current_task tcell ccell">None</div>
+					</div>
 				</div>
 			</div>
-
-			<button id="sync_cache" class="cbtn">Sync settings</button>
+			<div class="t_axes"></div>
 		</div>
-		<div id="axes"></div>
+
 	</div>
+
+	<span id="device_frame"></span>
 
 	<div id="editor" class="section">
 		<div class="section_title">Path editor</div>

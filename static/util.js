@@ -1,7 +1,15 @@
 function map(arr, func) {
-	var out = [];
+	var out = Array(arr.length);
 	for (var i = 0; i < arr.length; ++i) {
-		out.push(func(i, arr[i]));
+		out[i] = func(i, arr[i]);
+	}
+	return out;
+}
+
+function map_range(num, func) {
+	var out = Array(num);
+	for (var i = 0; i < num; ++i) {
+		out[i] = func(i);
 	}
 	return out;
 }
@@ -38,3 +46,12 @@ function template(cl) {
 	return eid("templates").querySelector("#templates > ." + cl).cloneNode(true)
 }
 
+function cast(type, val) {
+	switch (type) {
+		case "int": return parseInt(val);
+		case "float": return parseFloat(val);
+		case "str": return "" + val;
+	}
+	console.error("unknown type '" + type + "'");
+	return val;
+}

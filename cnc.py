@@ -24,17 +24,16 @@ class CNC:
 		self.dummy = dummy
 
 		self.cache = None
-		self.load_cache();
+		self.load_cache()
 
-		self.sens = 0;
-		self.updstat = False;
+		self.sens = 0
 
 		self.task_queue = Queue()
 
 	def load_cache(self):
 		try:
 			with open("cache.json", "r") as f:
-				self.cache = json.load(f);
+				self.cache = json.load(f)
 		except (OSError, IOError, json.JSONDecodeError) as e:
 			self.cache = {
 				"axes": []
@@ -46,7 +45,7 @@ class CNC:
 					"vel_init": 100,
 					"vel_max": 500,
 					"acc_max": 1000
-				});
+				})
 
 		self.store_cache()
 
@@ -86,10 +85,6 @@ class CNC:
 
 		self.lib = None
 
-	def _decode_sensors(self, sens):
-		ss = [(sens>>(2*i))&3 for i in range(len(self.config["axes"]))]
-		return [(s&1, s>>1) for s in ss]
-
 	def poll(self):
 		if self.peer is None:
 			return
@@ -97,22 +92,21 @@ class CNC:
 		# check sensors state
 		sens = 0
 		if not self.dummy:
-			sens = int(self.lib.cnc_read_sensors());
+			sens = int(self.lib.cnc_read_sensors())
 		if sens != self.sens:
-			self.peer.send({
-				"action": "set_sensors",
-				"sensors": self._decode_sensors(sens),
-			});
 			self.sens = sens
+			self._send_sensors_state()
 
 		# check for complete tasks
 		rts = 0
 		if not self.dummy:
 			rts = self.lib.cnc_is_busy()
 		qts = self.task_queue.qsize()
+
+		updstat = False
 		for i in range(qts - rts):
 			ti, task = self.task_queue.get_nowait()
-			self.updstat = True
+			updstat = True
 
 			rt = {
 				"id": ti["id"],
@@ -129,13 +123,24 @@ class CNC:
 
 			self.peer.send(res)
 
-		# send status
-		if self.updstat:
-			self.peer.send({
-				"action": "set_tasks",
+		if updstat:
+			self._send_device_state()
+
+	def _send_device_state(self):
+		self.peer.send({
+			"action": "set_device_state",
+			"status": "busy" if self.task_queue.qsize() > 0 else "idle",
+			"tasks": {
 				"count": self.task_queue.qsize()
-			})
-			self.updstat = False
+			}
+		})
+
+	def _send_sensors_state(self):
+		ss = [(self.sens>>(2*i))&3 for i in range(len(self.config["axes"]))]
+		self.peer.send({
+			"action": "set_sensors_state",
+			"sensors": [(s&1, s>>1) for s in ss],
+		})
 
 	def disconnect(self, peer):
 		if peer is self.peer:
@@ -177,26 +182,20 @@ class CNC:
 			})
 			return
 
-		if req["action"] == "set_cache":
-			cache = req["cache"]
+		if req["action"] == "update_cache":
+			cache = req["cache_diff"]
 			for sc, c in zip(self.cache["axes"], cache["axes"]):
 				if c is not None:
 					sc.update(c)
 			self.store_cache()
 			return
 
-		if req["action"] == "get_tasks":
-			peer.send({
-				"action": "set_tasks",
-				"count": self.task_queue.qsize()
-			})
+		if req["action"] == "get_device_state":
+			self._send_device_state()
 			return
 
-		if req["action"] == "get_sensors":
-			self.peer.send({
-				"action": "set_sensors",
-				"sensors": self._decode_sensors(self.sens),
-			});
+		if req["action"] == "get_sensors_state":
+			self._send_sensors_state()
 			return
 
 		if req["action"] == "stop_device":
@@ -204,7 +203,7 @@ class CNC:
 				self.lib.cnc_stop()
 			while self.task_queue.qsize() > 0:
 				self.task_queue.get_nowait()
-			self.updstat = True
+			self._send_device_state()
 			return
 
 		if req["action"] == "run_task":
@@ -226,6 +225,6 @@ class CNC:
 			if not self.dummy:
 				self.lib.cnc_push_task(task)
 				self.lib.cnc_run_async()
-			self.updstat = True
+			self._send_device_state()
 
 			return

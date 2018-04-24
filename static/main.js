@@ -1,287 +1,139 @@
-function Item(elem, type) {
-	this.elem = elem;
-}
-Item.prototype.constructor = Item;
 
-function Button(elem, action) {
-	Item.call(this, elem);
-	this.action = action;
-	this.elem.addEventListener("click", this.action);
-}
-Button.prototype = Object.create(Item.prototype);
-Button.prototype.constructor = Button;
-
-function ButtonExt(elem, actions) {
-	Item.call(this, elem);
-
-	this.actions = actions;
-	map_dict(this.actions, function (k, v) {
-		this.elem.addEventListener(k, v);
-	}.bind(this));
-}
-ButtonExt.prototype = Object.create(Item.prototype);
-ButtonExt.prototype.constructor = ButtonExt;
-
-function ToggleButton(elem, action) {
-	Button.call(this, elem, action);
-	this._value = false;
-	this.elem.removeEventListener("click", this.action);
-	this.elem.addEventListener("click", function(event){
-		this._value = !this._value;
-		this.action(event);
-	}.bind(this));
-}
-ToggleButton.prototype = Object.create(Button.prototype);
-ToggleButton.prototype.constructor = ToggleButton;
-ToggleButton.prototype.getValue = function () {
-	return this._value;
-};
-ToggleButton.prototype.setValue = function (v) {
-	this._value = v;
-	this.action();
-};
-
-function Label(elem, update) {
-	Item.call(this, elem);
-	this.update = update;
-}
-Label.prototype = Object.create(Item.prototype);
-Label.prototype.constructor = Label;
-
-function Input(elem, update) {
-	Item.call(this, elem);
-	this._value = "";
-	this.update = update;
-	this.elem.addEventListener("change", function (event) {
-		this._value = this.elem.value;
-		this.update(event);
-	}.bind(this));
-}
-Input.prototype = Object.create(Item.prototype);
-Input.prototype.constructor = Input;
-
-Input.prototype.getValue = function () {
-	return this._value;
-}
-Input.prototype.setValue = function (v) {
-	this._value = v;
-	this.elem.value = v;
-}
-
-function Axis(app, elem, num, config) {
-	Item.call(this, elem);
+function Axis(app, dev, num, config) {
+	Item.call(this, template("T_Axis"));
 	this.app = app;
+	this.dev = dev;
 	this.num = num;
-	this.config = config ? config : {};
-	this.cache = {};
+	this.config = config;
+	
+	this._cache = {};
 
 	if (this.config["name"]) {
 		ecl(this.elem, "t_axis_name").innerText = this.config["name"].toUpperCase();
 	}
 
-	this.scan = new Button(ecl(this.elem, "t_axis_scan"), function () {
-		this.app.send({
-			"action": "run_task",
-			"task": {
-				"id": 0,
-				"type": "scan",
-				"axis": this.num
-			}
-		});
-	}.bind(this));
-
-	this.calib = new Button(ecl(this.elem, "t_axis_calib"), function () {
-		this.app.send({
-			"action": "run_task",
-			"task": {
-				"id": 0,
-				"type": "calib",
-				"axis": this.num
-			}
-		});
+	map(["scan", "calib"], function (i, key) {
+		this.scan = new Button(ecl(this.elem, "t_axis_" + key), function () {
+			this.app.send({
+				"action": "run_task",
+				"task": {
+					"id": 0,
+					"type": key,
+					"axis": this.num
+				}
+			});
+		}.bind(this));
 	}.bind(this));
 
 	this.pos = new Label(ecl(this.elem, "t_pos"));
 	this.len = new Label(ecl(this.elem, "t_len"));
-	this.vel_init = new Input(ecl(this.elem, "t_vel_init"), function () {
-		console.log("change vel_init");
-		this.cache["vel_init"] = this.vel_init.getValue();
-	}.bind(this));
-	this.vel_max = new Input(ecl(this.elem, "t_vel_max"), function () {
-		console.log("change vel_max");
-		this.cache["vel_max"] = this.vel_max.getValue();
-	}.bind(this));
-	this.acc_max = new Input(ecl(this.elem, "t_acc_max"), function () {
-		console.log("change acc_max");
-		this.cache["acc_max"] = this.acc_max.getValue();
-
-		this.app.send({"action": "set_cache"});
+	map(["vel_init", "vel_max", "acc_max"], function (i, key) {
+		this[key] = new Input(ecl(this.elem, "t_" + key), function () {
+			console.log("change " + key);
+			var val = this[key].getValue();
+			this._cache[key] = val;
+			var cdiff = {};
+			cdiff[key] = val;
+			this.dev._sendAxCDiff(this.num, cdiff);
+		}.bind(this), "float");
 	}.bind(this));
 }
 Axis.prototype = Object.create(Item.prototype);
 Axis.prototype.constructor = Axis;
 
-Axis.prototype.getCache = function (cache) {
-	var cache = {
-		"pos": ecl(this.elem, "t_pos").innerText,
-		"len": ecl(this.elem, "t_len").innerText,
-		"vel_init": ecl(this.elem, "t_vel_init").value,
-		"vel_max": ecl(this.elem, "t_vel_max").value,
-		"acc_max": ecl(this.elem, "t_acc_max").value
-	};
-	return cache;
-};
 Axis.prototype.setCache = function (cache) {
-	ecl(this.elem, "t_pos").innerText = cache["pos"];
-	ecl(this.elem, "t_len").innerText = cache["len"];
-	ecl(this.elem, "t_vel_init").value = cache["vel_init"];
-	ecl(this.elem, "t_vel_max").value = cache["vel_max"];
-	ecl(this.elem, "t_acc_max").value = cache["acc_max"];
+	this._cache = cache;
+	map_dict(this._cache, function (k, v) {
+		this[k].setValue(v);
+	}.bind(this));
 };
 
-Axis.prototype.setSensors = function (sens) {
+Axis.prototype.getCache = function (cache) {
+	return this._cache;
+};
+
+Axis.prototype.setSensorsState = function (sens) {
 	ecl(this.elem, "t_sens_left").classList[sens[0] ? "add" : "remove"]("ccell_active");
 	ecl(this.elem, "t_sens_right").classList[sens[1] ? "add" : "remove"]("ccell_active");
 };
 
-function Device(app, elem, config) {
-	Item.call(this, elem);
-	this.app = app;
-	this.config = config;
+Axis.prototype.completeTask = function (task) {
+	if (task["type"] == "scan") {
+		this.pos.setValue(0);
+		this.len.setValue(task["length"]);
+	}
+}
 
-	var axcon = eid("axes");
-	clear(axcon);
-	this.axes = map(this.config["axes"], function (i, ac) {
-		var elem = template("t_axis");
-		axcon.appendChild(elem);
-		var axis = new Axis(this.app, this, elem, i, ac);
-		return axis;
-	}.bind(this));
+function Device(app) {
+	Item.call(this, template("T_Device"));
+	this.app = app;
+	this.axes = [];
+	this.config = {};
+	this._cache = {};
+
+	var stop = function () {
+		console.log("stop_button: down");
+		this.app.send({"action": "stop_device"});
+	}.bind(this);
+	this.stop_button = new ButtonExt(ecl(this.elem, "t_stop_button"), {"mousedown": stop, "click": stop});
+	this.device_status = new Label(ecl(this.elem, "t_device_status"));
 }
 Device.prototype = Object.create(Item.prototype);
 Device.prototype.constructor = Device;
 
+Device.prototype.setConfig = function (config) {
+	this.config = config;
 
-Stage = {
-	INIT: 0,
-	CONFIG: 1,
-	OPERATE: 2
-};
-
-function App() {
-	this.ws = null;
-	this.wscbs = {};
-	this.wswd = null;
-
-	this.items = {};
-	this.stage = Stage.INIT;
-	this.config = {};
-	this.cache = {};
-
-	this.Status = {
-		"ERROR": 0,
-		"WARNING": 1,
-		"IDLE": 2,
-		"BUSY": 3
-	};
-}
-App.prototype.constructor = App;
-
-App.prototype.init = function () {
-	var device = {};
-	var stop = function () {
-		console.log("stop_button: down");
-		this.send({"action": "stop_device"});
-	}.bind(this);
-	device.stop_button = new ButtonExt(eid("stop_button"), {"mousedown": stop, "click": stop});
-	device.device_status = new Label(eid("device_status"), function (value) {
-		this.items.device.device_status.innerText = value;
+	var axcon = ecl(this.elem, "t_axes");
+	clear(axcon);
+	this.axes = map(this.config["axes"], function (i, ac) {
+		var axis = new Axis(this.app, this, i, ac);
+		axcon.appendChild(axis.elem);
+		return axis;
 	}.bind(this));
-	this.items["device"] = device;
 
-	var editor = {
-		"mode": {
-			"2d": new Button(eid("canvas_mode_2d"), function () {
-				this.items.editor.mode["2d"].elem.classList.remove("ccellbtn_inactive");
-				this.items.editor.mode["3d"].elem.classList.add("ccellbtn_inactive");
-			}.bind(this)),
-			"3d": new Button(eid("canvas_mode_3d"), function () {
-				this.items.editor.mode["2d"].elem.classList.add("ccellbtn_inactive");
-				this.items.editor.mode["3d"].elem.classList.remove("ccellbtn_inactive");
-			}.bind(this))
-		}
-	};
-	this.items["editor"] = editor;
+	this.app.send({"action": "get_cache"});
+	this.app.send({"action": "get_device_state"});
+	this.app.send({"action": "get_sensors_state"});
+}
 
-	this.wscbs = {
-		"message": function (event) {
-			console.log(event.data);
-			msg = JSON.parse(event.data);
-			if (this.stage == Stage.INIT) {
-				if (msg["action"] == "accept") {
-					this.stage = Stage.CONFIG;
-					console.log("successfully connected");
-					this.send({"action": "get_config"});
-				} else if (msg["action"] == "refuse") {
-					console.error("connection error: " + msg["reason"]);
-				}
-			} else if (this.stage == Stage.CONFIG) {
-				if (msg["action"] == "set_config") {
-
-					this.items["device"] = new Device(this, eid("device"), msg["config"]);
-
-					this.stage = Stage.OPERATE;
-					console.log("config received");
-
-					this.send({"action": "get_cache"});
-					this.send({"action": "get_tasks"});
-					this.send({"action": "get_sensors"});
-				}
-			} else if (this.stage == Stage.OPERATE) {
-				if (msg["action"] == "set_cache") {
-					map(this.items.axes, function (i, ax) {
-						ax.setCache(msg["cache"]["axes"][i]);
-					}.bind(this));
-				} else if (msg["action"] == "set_tasks") {
-					if (msg["count"] == 0) {
-						this.setStatus(this.Status.IDLE, "Idle");
-					} else {
-						this.setStatus(this.Status.BUSY, "Busy");
-					}
-					eid("device_status_tasks_in_queue").innerText = msg["count"];
-					eid("device_status_current_task").innerText = msg["current"];
-				} else if (msg["action"] == "set_sensors") {
-					var sens = msg["sensors"];
-					map(this.items.axes, function (i, ax) {
-						ax.setSensors(sens[i]);
-					}.bind(this));
-				} else if (msg["action"] == "complete_task") {
-					var task = msg["task"];
-					if (task["type"] == "scan") {
-						// TODO: move to axis
-						ecl(this.items["axes"][task["axis"]].elem, "t_pos").innerText = 0;
-						ecl(this.items["axes"][task["axis"]].elem, "t_len").innerText = task["length"];
-					}
-				}
-			}
-		}.bind(this),
-		"open": function (event) {
-			console.log("ws open");
-			this.send({"action": "connect"});
-		}.bind(this),
-		"close": function (event) {
-			console.log("ws close");
-			this.setStatus(this.Status.ERROR, "Not connected");
-		}.bind(this),
-		"error": function (event) {
-			console.log("ws error");
-			this.setStatus(this.Status.ERROR, "Error");
-		}.bind(this)
-	};
+Device.prototype.setCache = function (cache) {
+	this._cache = cache;
+	map(this.axes, function (i, ax) {
+		ax.setCache(this._cache["axes"][i]);
+	}.bind(this));
 };
 
-App.prototype.setStatus = function (stat, info) {
-	var elem = eid("device_status_value");
+Device.prototype.getCache = function (cache) {
+	return this._cache;
+};
+
+Device.prototype._sendAxCDiff = function (axno, axcache) {
+	var cdiff = {
+		"axes": map(this.axes, function () { return {}; })
+	};
+	cdiff["axes"][axno] = axcache;
+	this.app.send({
+		"action": "update_cache",
+		"cache_diff": cdiff
+	});
+}
+
+Device.prototype.setSensorsState = function (sens) {
+	map(this.axes, function (i, ax) {
+		ax.setSensorsState(sens[i]);
+	}.bind(this));
+}
+
+Device.prototype.Status = {
+	ERROR: 0,
+	WARNING: 1,
+	IDLE: 2,
+	BUSY: 3
+};
+
+Device.prototype.setStatus = function (stat, info) {
+	var elem = ecl(this.elem, "t_device_status_value");
 	map(["ccol_good", "ccol_warn", "ccol_error", "ccell_active"], function (i, col) {
 		elem.classList.remove(col);
 	}.bind(this));
@@ -297,13 +149,114 @@ App.prototype.setStatus = function (stat, info) {
 	elem.innerText = info;
 };
 
+Device.prototype.setState = function (info) {
+	if (info["status"] == "idle") {
+		this.setStatus(this.Status.IDLE, info["status"]);
+	} else if (info["status"] == "busy") {
+		this.setStatus(this.Status.BUSY, info["status"]);
+	} else {
+		this.setStatus(this.Status.WARNING, "unknown");
+	}
+	ecl(this.elem, "t_device_status_tasks_in_queue").innerText = info["tasks"]["count"];
+	ecl(this.elem, "t_device_status_current_task").innerText = info["tasks"]["current"];
+}
+
+Device.prototype.completeTask = function (task) {
+	if (task["type"] == "scan" || task["type"] == "calib") {
+		this.axes[task["axis"]].completeTask(task)
+	}
+}
+
+function App() {
+	this.ws = null;
+	this.wscbs = {};
+	this.wswd = null;
+
+	this.items = {};
+	this.stage = this.Stage.INIT;
+	this.config = {};
+	this.cache = {};
+}
+App.prototype.constructor = App;
+
+App.prototype.Stage = {
+	INIT: 0,
+	CONFIG: 1,
+	OPERATE: 2
+};
+
+App.prototype.init = function () {
+	this.device = new Device(this);
+	var device_frame = eid("device_frame");
+	clear(device_frame);
+	device_frame.appendChild(this.device.elem);
+
+
+	this.editor = {
+		"mode": {
+			"2d": new Button(eid("canvas_mode_2d"), function () {
+				this.items.editor.mode["2d"].elem.classList.remove("ccellbtn_inactive");
+				this.items.editor.mode["3d"].elem.classList.add("ccellbtn_inactive");
+			}.bind(this)),
+			"3d": new Button(eid("canvas_mode_3d"), function () {
+				this.items.editor.mode["2d"].elem.classList.add("ccellbtn_inactive");
+				this.items.editor.mode["3d"].elem.classList.remove("ccellbtn_inactive");
+			}.bind(this))
+		}
+	};
+
+	this.wscbs = {
+		"message": function (event) {
+			console.log("[recv]: " + event.data);
+			msg = JSON.parse(event.data);
+			if (this.stage == this.Stage.INIT) {
+				if (msg["action"] == "accept") {
+					this.stage = this.Stage.CONFIG;
+					console.log("successfully connected");
+					this.send({"action": "get_config"});
+				} else if (msg["action"] == "refuse") {
+					console.error("connection error: " + msg["reason"]);
+				}
+			} else if (this.stage == this.Stage.CONFIG) {
+				if (msg["action"] == "set_config") {
+					console.log("config received");
+					this.stage = this.Stage.OPERATE;
+					this.device.setConfig(msg["config"]);
+				}
+			} else if (this.stage == this.Stage.OPERATE) {
+				if (msg["action"] == "set_cache") {
+					this.device.setCache(msg["cache"]);
+				} else if (msg["action"] == "set_device_state") {
+					this.device.setState(msg);
+				} else if (msg["action"] == "set_sensors_state") {
+					this.device.setSensorsState(msg["sensors"]);
+				} else if (msg["action"] == "complete_task") {
+					this.device.completeTask(msg["task"]);
+				}
+			}
+		}.bind(this),
+		"open": function (event) {
+			console.log("ws open");
+			this.send({"action": "connect"});
+		}.bind(this),
+		"close": function (event) {
+			console.log("ws close");
+			this.device.setStatus(Device.prototype.Status.ERROR, "not connected");
+		}.bind(this),
+		"error": function (event) {
+			console.log("ws error");
+			this.device.setStatus(Device.prototype.Status.ERROR, "error");
+		}.bind(this)
+	};
+};
+
 App.prototype.quit = function () {
 	this.send({"action": "disconnect"});
 	this.disconnect();
 
 	this.ws = null;
 	this.items = {};
-	this.stage = Stage.INIT;
+	this.stage = this.Stage.INIT;
 	this.config = {};
 	this.cache = {};
 };
@@ -327,12 +280,14 @@ App.prototype.disconnect = function () {
 	if (this.ws && this.ws.readyState < 2) {
 		this.ws.close();
 	}
-	this.stage = Stage.INIT;
+	this.stage = this.Stage.INIT;
 };
 
 App.prototype.send = function (message) {
 	if (this.ws && this.ws.readyState < 2) {
-		this.ws.send(JSON.stringify(message))
+		var msgstr = JSON.stringify(message);
+		this.ws.send(msgstr);
+		console.log("[send]: " + JSON.stringify(message));
 	}
 };
 
