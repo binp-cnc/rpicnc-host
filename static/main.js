@@ -48,12 +48,32 @@ function Label(elem, update) {
 Label.prototype = Object.create(Item.prototype);
 Label.prototype.constructor = Label;
 
+function Input(elem, update) {
+	Item.call(this, elem);
+	this._value = "";
+	this.update = update;
+	this.elem.addEventListener("change", function (event) {
+		this._value = this.elem.value;
+		this.update(event);
+	}.bind(this));
+}
+Input.prototype = Object.create(Item.prototype);
+Input.prototype.constructor = Input;
+
+Input.prototype.getValue = function () {
+	return this._value;
+}
+Input.prototype.setValue = function (v) {
+	this._value = v;
+	this.elem.value = v;
+}
 
 function Axis(app, elem, num, config) {
 	Item.call(this, elem);
 	this.app = app;
 	this.num = num;
 	this.config = config ? config : {};
+	this.cache = {};
 
 	if (this.config["name"]) {
 		ecl(this.elem, "t_axis_name").innerText = this.config["name"].toUpperCase();
@@ -79,6 +99,23 @@ function Axis(app, elem, num, config) {
 				"axis": this.num
 			}
 		});
+	}.bind(this));
+
+	this.pos = new Label(ecl(this.elem, "t_pos"));
+	this.len = new Label(ecl(this.elem, "t_len"));
+	this.vel_init = new Input(ecl(this.elem, "t_vel_init"), function () {
+		console.log("change vel_init");
+		this.cache["vel_init"] = this.vel_init.getValue();
+	}.bind(this));
+	this.vel_max = new Input(ecl(this.elem, "t_vel_max"), function () {
+		console.log("change vel_max");
+		this.cache["vel_max"] = this.vel_max.getValue();
+	}.bind(this));
+	this.acc_max = new Input(ecl(this.elem, "t_acc_max"), function () {
+		console.log("change acc_max");
+		this.cache["acc_max"] = this.acc_max.getValue();
+
+		this.app.send({"action": "set_cache"});
 	}.bind(this));
 }
 Axis.prototype = Object.create(Item.prototype);
@@ -106,6 +143,24 @@ Axis.prototype.setSensors = function (sens) {
 	ecl(this.elem, "t_sens_left").classList[sens[0] ? "add" : "remove"]("ccell_active");
 	ecl(this.elem, "t_sens_right").classList[sens[1] ? "add" : "remove"]("ccell_active");
 };
+
+function Device(app, elem, config) {
+	Item.call(this, elem);
+	this.app = app;
+	this.config = config;
+
+	var axcon = eid("axes");
+	clear(axcon);
+	this.axes = map(this.config["axes"], function (i, ac) {
+		var elem = template("t_axis");
+		axcon.appendChild(elem);
+		var axis = new Axis(this.app, this, elem, i, ac);
+		return axis;
+	}.bind(this));
+}
+Device.prototype = Object.create(Item.prototype);
+Device.prototype.constructor = Device;
+
 
 Stage = {
 	INIT: 0,
@@ -172,17 +227,8 @@ App.prototype.init = function () {
 				}
 			} else if (this.stage == Stage.CONFIG) {
 				if (msg["action"] == "set_config") {
-					this.config = msg["config"];
 
-					console.log("axes");
-					var axcon = eid("axes");
-					clear(axcon);
-					this.items.axes = map(this.config["axes"], function (i, ac) {
-						var elem = template("t_axis");
-						axcon.appendChild(elem);
-						var axis = new Axis(this, elem, i, ac);
-						return axis;
-					}.bind(this));
+					this.items["device"] = new Device(this, eid("device"), msg["config"]);
 
 					this.stage = Stage.OPERATE;
 					console.log("config received");

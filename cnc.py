@@ -177,10 +177,11 @@ class CNC:
 			})
 			return
 
-		if req["action"] == "sync_cache":
+		if req["action"] == "set_cache":
 			cache = req["cache"]
 			for sc, c in zip(self.cache["axes"], cache["axes"]):
-				sc.update(c)
+				if c is not None:
+					sc.update(c)
 			self.store_cache()
 			return
 
