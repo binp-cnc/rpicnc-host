@@ -108,20 +108,30 @@ class CNC:
 			ti, task = self.task_queue.get_nowait()
 			updstat = True
 
-			rt = {
-				"id": ti["id"],
-				"type": ti["type"]
-			}
-			res = {
-				"action": "complete_task",
-				"task": rt
-			}
-
 			if ti["type"] == "scan":
-				rt["axis"] = ti["axis"]
-				rt["length"] = task._task.scan.length
+				axc = self.cache["axes"][ti["axis"]]
+				axc["pos"] = 0
+				axc["len"] = task._task.scan.length
+				self._send_cache()
 
-			self.peer.send(res)
+				ti["length"] = task._task.scan.length
+
+			elif ti["type"] == "calib":
+				axc = self.cache["axes"][ti["axis"]]
+				axc["pos"] = 0
+				axc["vel_init"] = task._task.calib.vel_ini
+				#axc["vel_max"] = task._task.calib.vel_max
+				#axc["acc_max"] = task._task.calib.acc_max
+				self._send_cache()
+
+				ti["vel_init"] = task._task.calib.vel_ini
+				#ti["vel_max"] = task._task.calib.vel_max
+				#ti["acc_max"] = task._task.calib.acc_max
+
+			self.peer.send({
+				"action": "complete_task",
+				"task": ti
+			})
 
 		if updstat:
 			self._send_device_state()
@@ -140,6 +150,12 @@ class CNC:
 		self.peer.send({
 			"action": "set_sensors_state",
 			"sensors": [(s&1, s>>1) for s in ss],
+		})
+
+	def _send_cache(self):
+		self.peer.send({
+			"action": "set_cache",
+			"cache": self.cache
 		})
 
 	def disconnect(self, peer):
@@ -176,10 +192,7 @@ class CNC:
 			return
 
 		if req["action"] == "get_cache":
-			peer.send({
-				"action": "set_cache",
-				"cache": self.cache
-			})
+			self._send_cache()
 			return
 
 		if req["action"] == "update_cache":
@@ -217,7 +230,16 @@ class CNC:
 					ti["axis"],
 					ac["vel_init"],
 					ac["vel_max"],
-					ac["acc_max"]
+					ac["acc_max"],
+				)
+				print(task._task.scan.vel_ini)
+			elif ti["type"] == "calib":
+				ac = self.cache["axes"][ti["axis"]]
+				print(ac)
+				task = lib.Task(
+					lib.TASK_CALIB,
+					ti["axis"],
+					ac["vel_init"],
 				)
 				print(task._task.scan.vel_ini)
 

@@ -62,7 +62,7 @@ function Input(elem, update, type) {
 	this.type = type ? type : "str";
 	this.update = update;
 	this.elem.addEventListener("change", function (event) {
-		this._value = this.elem.value;
+		this._value = cast(this.elem.value);
 		this.update(event);
 	}.bind(this));
 }

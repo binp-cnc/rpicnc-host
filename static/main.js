@@ -58,10 +58,12 @@ Axis.prototype.setSensorsState = function (sens) {
 };
 
 Axis.prototype.completeTask = function (task) {
+	/*
 	if (task["type"] == "scan") {
 		this.pos.setValue(0);
 		this.len.setValue(task["length"]);
 	}
+	*/
 }
 
 function Device(app) {
