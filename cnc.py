@@ -43,7 +43,7 @@ class CNC:
 					"pos": 0,
 					"len": 1000,
 					"vel_init": 100,
-					"vel_max": 500,
+					"vel_max": 400,
 					"acc_max": 1000
 				})
 

@@ -31,10 +31,12 @@ function Axis(app, dev, num, config) {
 		this[key] = new Input(ecl(this.elem, "t_" + key), function () {
 			console.log("change " + key);
 			var val = this[key].getValue();
-			this._cache[key] = val;
-			var cdiff = {};
-			cdiff[key] = val;
-			this.dev._sendAxCDiff(this.num, cdiff);
+			if (val && val >= 0.0) {
+				this._cache[key] = val;
+				var cdiff = {};
+				cdiff[key] = val;
+				this.dev._sendAxCDiff(this.num, cdiff);
+			}
 		}.bind(this), "float");
 	}.bind(this));
 }
