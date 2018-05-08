@@ -120,13 +120,14 @@ class CNC:
 				axc = self.cache["axes"][ti["axis"]]
 				axc["pos"] = 0
 				axc["vel_init"] = task._task.calib.vel_ini
-				#axc["vel_max"] = task._task.calib.vel_max
-				#axc["acc_max"] = task._task.calib.acc_max
+				axc["vel_max"] = task._task.calib.vel_max
+				axc["acc_max"] = task._task.calib.acc_max
+				self.store_cache()
 				self._send_cache()
 
 				ti["vel_init"] = task._task.calib.vel_ini
-				#ti["vel_max"] = task._task.calib.vel_max
-				#ti["acc_max"] = task._task.calib.acc_max
+				ti["vel_max"] = task._task.calib.vel_max
+				ti["acc_max"] = task._task.calib.acc_max
 
 			self.peer.send({
 				"action": "complete_task",
@@ -240,6 +241,8 @@ class CNC:
 					lib.TASK_CALIB,
 					ti["axis"],
 					ac["vel_init"],
+					ac["vel_max"],
+					ac["acc_max"],
 				)
 				print(task._task.scan.vel_ini)
 

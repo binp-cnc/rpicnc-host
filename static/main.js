@@ -31,7 +31,8 @@ function Axis(app, dev, num, config) {
 		this[key] = new Input(ecl(this.elem, "t_" + key), function () {
 			console.log("change " + key);
 			var val = this[key].getValue();
-			if (val && val >= 0.0) {
+			if ((val || val == 0) && val >= 0.0) {
+				console.log(val);
 				this._cache[key] = val;
 				var cdiff = {};
 				cdiff[key] = val;

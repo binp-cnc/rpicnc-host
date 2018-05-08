@@ -183,12 +183,12 @@ class TaskCalib(Structure):
 		("acc_max", c_float),
 	]
 
-	def __init__(self, axis, vel_ini):
+	def __init__(self, axis, vel_ini, vel_max, acc_max):
 		super().__init__()
 		self.axis = c_int(axis)
 		self.vel_ini = c_float(vel_ini)
-		self.vel_max = c_float(0.0)
-		self.acc_max = c_float(0.0)
+		self.vel_max = c_float(vel_max)
+		self.acc_max = c_float(acc_max)
 
 class TaskCmds(Structure):
 	_fields_ = [
