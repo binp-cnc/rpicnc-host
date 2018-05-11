@@ -11,21 +11,31 @@ CMD_NONE = 0x00
 CMD_IDLE = 0x01
 CMD_WAIT = 0x02
 CMD_SYNC = 0x03
+CMD_MOVE = 0x10
 
-CMD_MOVE = 0x11
-CMD_ACCL = 0x12
-CMD_SINE = 0x13
+CMD_MOVE_VEL = 0x11
+CMD_MOVE_ACC = 0x12
+CMD_MOVE_SIN = 0x13
 
 class CmdNone(Structure):
 	_fields_ = []
 
+	def __init__(self):
+		pass
+
 class CmdIdle(Structure):
 	_fields_ = []
+
+	def __init__(self):
+		pass
 
 class CmdWait(Structure):
 	_fields_ = [
 		("duration", c_uint32), # us
 	]
+
+	def __init__(self, duration):
+		self.duration = c_uint32(duration)
 
 class CmdSync(Structure):
 	_fields_ = [
@@ -33,95 +43,93 @@ class CmdSync(Structure):
 		("count", c_uint32),
 	]
 
-class CmdMove(Structure):
+	def __init__(self, id_, count):
+		self.id_ = c_uint32(id_)
+		self.count = c_uint32(count)
+
+class CmdMoveVel(Structure):
 	_fields_ = [
-		("dir", c_uint8),
-		("steps", c_uint32),
 		("period", c_uint32), # us
 	]
 
-class CmdAccl(Structure):
+	def __init__(self, period):
+		self.period = c_uint32(period)
+
+class CmdMoveAcc(Structure):
 	_fields_ = [
-		("dir", c_uint8),
-		("steps", c_uint32),
 		("begin_period", c_uint32),
 		("end_period", c_uint32),
 	]
 
-class CmdSine(Structure):
+	def __init__(self, begin_period, end_period):
+		self.begin_period = c_uint32(begin_period)
+		self.end_period = c_uint32(end_period)
+
+class CmdMoveSin(Structure):
 	_fields_ = [
-		("dir_", c_uint8),
-		("steps", c_uint32),
 		("begin", c_uint32),
 		("size", c_uint32),
 		("period", c_uint32),
 	]
 
+	def __init__(self, begin, size, period):
+		self.begin = c_uint32(begin)
+		self.size = c_uint32(size)
+		self.period = c_uint32(period)
+
+class _CmdMoveUnion(Union):
+	_fields_ = [
+		("vel", CmdMoveVel),
+		("acc", CmdMoveAcc),
+		("sin", CmdMoveSin),
+	]
+
+class CmdMove(Structure):
+	_fields_ = [
+		("type_", c_uint8),
+		("dir_", c_uint8),
+		("steps", c_uint32),
+		("_cmd", _CmdMoveUnion),
+	]
+
+	def __init__(self, type_, dir_, steps, *args):
+		self.type_ = c_uint8(type_)
+		self.dir_ = c_uint8(dir_)
+		self.steps = c_uint32(steps)
+		if type_ == CMD_MOVE_VEL:
+			self._cmd.vel.__init__(*args)
+		elif type_ == CMD_MOVE_ACC:
+			self._cmd.acc.__init__(*args)
+		elif type_ == CMD_MOVE_SIN:
+			self._cmd.sin.__init__(*args)
+
 class _CmdUnion(Union):
 	_fields_ = [
 		("none", CmdNone),
+		("idle", CmdNone),
 		("wait", CmdWait),
 		("sync", CmdSync),
 		("move", CmdMove),
-		("accl", CmdAccl),
-		("sine", CmdSine),
 	]
 
 class Cmd(Structure):
 	_fields_ = [
-		("type_", c_int),
+		("type_", c_uint8),
 		("_cmd", _CmdUnion),
 	]
 
-def cmd_none():
-	cmd = Cmd()
-	cmd.type_ = CMD_NONE
-	return cmd
-
-def cmd_idle():
-	cmd = Cmd()
-	cmd.type_ = CMD_IDLE
-	return cmd
-
-def cmd_wait(duration):
-	cmd = Cmd()
-	cmd.type_ = CMD_WAIT
-	cmd._cmd.wait.duration = duration
-	return cmd
-
-def cmd_sync(id_, count):
-	cmd = Cmd()
-	cmd.type_ = CMD_SYNC
-	cmd._cmd.sync.id_ = id_
-	cmd._cmd.sync.count = count
-	return cmd
-
-def cmd_move(dir_, steps, period):
-	cmd = Cmd()
-	cmd.type_ = CMD_MOVE
-	cmd._cmd.move.dir_ = dir_
-	cmd._cmd.move.steps = steps
-	cmd._cmd.move.period = period
-	return cmd
-
-def cmd_accl(dir_, steps, begin_period, end_period):
-	cmd = Cmd()
-	cmd.type_ = CMD_ACCL
-	cmd._cmd.accl.dir_ = dir_
-	cmd._cmd.accl.steps = steps
-	cmd._cmd.accl.begin_period = begin_period
-	cmd._cmd.accl.end_period = end_period
-	return cmd
-
-def cmd_sine(dir_, steps, begin, size, period):
-	cmd = Cmd()
-	cmd.type_ = CMD_SINE
-	cmd._cmd.sine.dir_ = dir_
-	cmd._cmd.sine.steps = steps
-	cmd._cmd.sine.begin = begin
-	cmd._cmd.sine.size = size
-	cmd._cmd.sine.period = period
-	return cmd
+	def __init__(self, type_, *args):
+		self.type_ = c_uint8(type_)
+		if type_ == CMD_NONE:
+			self._cmd.none.__init__(*args)
+		elif type_ == CMD_IDLE:
+			self._cmd.idle.__init__(*args)
+		elif type_ == CMD_WAIT:
+			self._cmd.wait.__init__(*args)
+		elif type_ == CMD_SYNC:
+			self._cmd.sync.__init__(*args)
+		elif type_ == CMD_MOVE:
+			self._cmd.move.__init__(*args)
 
 
 ## task.h
@@ -129,10 +137,7 @@ def cmd_sine(dir_, steps, begin, size, period):
 TASK_NONE    = 0x00
 TASK_SCAN    = 0x01
 TASK_CALIB   = 0x02
-
 TASK_CMDS    = 0x10
-TASK_GCODE   = 0x11
-TASK_CURVE   = 0x12
 
 # task status
 TS_NONE = 0x00
@@ -199,23 +204,15 @@ class TaskCmds(Structure):
 		("cmds_done", c_int*MAX_AXES),
 	]
 
-	def __init__(self, cmds_count, cmds):
+	def __init__(self, cmds):
 		super().__init__()
-		self.cmds_count = cmds_count
-		self.cmds = cmds
-		self.cmds_done = c_int(0)
-
-class TaskGCode(Structure):
-	_fields_ = []
-
-	def __init__(self):
-		super().__init__()
-
-class TaskCurve(Structure):
-	_fields_ = []
-
-	def __init__(self):
-		super().__init__()
+		self.cmds_count = (c_int*MAX_AXES)()
+		self.cmds = (POINTER(Cmd)*MAX_AXES)()
+		self.cmds_done = (c_int*MAX_AXES)()
+		for i, acmds in enumerate(cmds):
+			self.cmds_count[i] = len(acmds)
+			self.cmds[i] = acmds
+			self.cmds_done[i] = 0
 
 class _TaskUnion(Union):
 	_fields_ = [
@@ -223,8 +220,6 @@ class _TaskUnion(Union):
 		("scan", TaskScan),
 		("calib", TaskCalib),
 		("cmds", TaskCmds),
-		("gcode", TaskGCode),
-		("curve", TaskCurve),
 	]
 
 class Task(Structure):
@@ -238,7 +233,7 @@ class Task(Structure):
 
 	def __init__(self, type_, *args):
 		super().__init__()
-		self.type_ = type_
+		self.type_ = c_int(type_)
 		if type_ == TASK_NONE:
 			self._task.none.__init__(*args)
 		elif type_ == TASK_SCAN:
@@ -247,10 +242,6 @@ class Task(Structure):
 			self._task.calib.__init__(*args)
 		elif type_ == TASK_CMDS:
 			self._task.cmds.__init__(*args)
-		elif type_ == TASK_GCODE:
-			self._task.gcode.__init__(*args)
-		elif type_ == TASK_CURVE:
-			self._task.curve.__init__(*args)
 
 ## main.h
 
@@ -260,13 +251,22 @@ class AxisInfo(Structure):
 		("pin_dir", c_int),
 		("pin_left", c_int),
 		("pin_right", c_int),
+
+		("position", c_int),
+		("direction", c_int),
+		("length", c_int),
 	]
 
-	def __init__(self, step, dir_, left, right):
-		self.pin_step = step
-		self.pin_dir = dir_
-		self.pin_left = left
-		self.pin_right = right
+	def __init__(self, **kwargs):
+		if "pins" in kwargs:
+			self.pin_step = kwargs["pins"]["step"]
+			self.pin_dir = kwargs["pins"]["dir"]
+			self.pin_left = kwargs["pins"]["left"]
+			self.pin_right = kwargs["pins"]["right"]
+
+		self.position = kwargs.get("pos", 0);
+		self.direction = kwargs.get("dir_", 0);
+		self.length = kwargs.get("len_", 0);
 
 
 ## load library
@@ -289,6 +289,9 @@ def load(path):
 
 	lib.cnc_read_sensors.argtypes = []
 	lib.cnc_read_sensors.restype = c_int
+
+	lib.cnc_axes_info.argtypes = [POINTER(AxisInfo)]
+	lib.cnc_axes_info.restype = c_int
 
 	# asynchronous
 	lib.cnc_push_task.argtypes = [POINTER(Task)]

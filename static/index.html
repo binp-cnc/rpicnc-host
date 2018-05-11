@@ -10,7 +10,7 @@
 	<script type="text/javascript" src="main.js"></script>
 </head>
 <body>
-	<h1>RPi CNC WebSocket interface v0.1.1</h1>
+	<h1>RPi CNC WebSocket interface v0.1.2</h1>
 
 	<div id="templates" style="display:none;">
 		<!-- Axis elem template -->
@@ -48,6 +48,18 @@
 			</div>
 			<button class="t_axis_scan cbtn">Scan</button>
 			<button class="t_axis_calib cbtn">Calibrate</button>
+
+			<div class="ttab cgrp">
+				<div class="trow">
+					<div class="tcell ccell">Absolute</div>
+					<div class="tcell ccell"><input type=number step=1 value=0 class="t_move_abs" /></div>
+				</div>
+				<div class="trow">
+					<div class="tcell ccell">Relative</div>
+					<div class="tcell ccell"><input type=number step=1 value=0 class="t_move_rel" /></div>
+				</div>
+			</div>
+			<button class="t_axis_move cbtn">Move</button>
 		</div>
 
 		<!-- Device elem template -->

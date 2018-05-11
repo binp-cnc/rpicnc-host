@@ -8,6 +8,7 @@ import logging as log
 log.basicConfig(level=log.DEBUG, format="[%(levelname)s] %(message)s")
 
 import lib
+from convert import Converter
 
 
 class CNCException(Exception):
@@ -60,14 +61,8 @@ class CNC:
 		self.lib = lib.load(os.getcwd() + "/librpicnc/build/cnc.so")
 		
 		c_axesinfo = (lib.AxisInfo*len(self.config["axes"]))()
-		for i, axis in enumerate(self.config["axes"]):
-			pins = axis["pins"]
-			c_axesinfo[i] = lib.AxisInfo(
-				pins["step"],
-				pins["dir"],
-				pins["left"],
-				pins["right"]
-			)
+		for i, (axis, ac) in enumerate(zip(self.config["axes"], self.cache["axes"])):
+			c_axesinfo[i] = lib.AxisInfo(pins=axis["pins"], pos=ac["pos"], len_=ac["len"])
 
 		r = self.lib.cnc_init(len(c_axesinfo), c_axesinfo)
 		if r != 0:
@@ -84,6 +79,13 @@ class CNC:
 			raise CNCException("cnc_quit error")
 
 		self.lib = None
+
+	def _fetch_info(self):
+		c_axesinfo = (lib.AxisInfo*len(self.cache["axes"]))()
+		self.lib.cnc_axes_info(c_axesinfo)
+		for ac, ai in zip(self.cache["axes"], c_axesinfo):
+			ac["pos"] = ai.position
+			ac["len"] = ai.length
 
 	def poll(self):
 		if self.peer is None:
@@ -105,29 +107,22 @@ class CNC:
 
 		updstat = False
 		for i in range(qts - rts):
-			ti, task = self.task_queue.get_nowait()
+			ti, task, td = self.task_queue.get_nowait()
 			updstat = True
 
 			if ti["type"] == "scan":
-				axc = self.cache["axes"][ti["axis"]]
-				axc["pos"] = 0
-				axc["len"] = task._task.scan.length
-				self._send_cache()
-
-				ti["length"] = task._task.scan.length
-
+				pass
 			elif ti["type"] == "calib":
 				axc = self.cache["axes"][ti["axis"]]
-				axc["pos"] = 0
 				axc["vel_init"] = task._task.calib.vel_ini
 				axc["vel_max"] = task._task.calib.vel_max
 				axc["acc_max"] = task._task.calib.acc_max
-				self.store_cache()
-				self._send_cache()
+			else:
+				pass
 
-				ti["vel_init"] = task._task.calib.vel_ini
-				ti["vel_max"] = task._task.calib.vel_max
-				ti["acc_max"] = task._task.calib.acc_max
+			self._fetch_info()
+			self.store_cache()
+			self._send_cache()
 
 			self.peer.send({
 				"action": "complete_task",
@@ -222,10 +217,11 @@ class CNC:
 
 		if req["action"] == "run_task":
 			ti = req["task"]
+			task = None
+			td = None
 			
 			if ti["type"] == "scan":
 				ac = self.cache["axes"][ti["axis"]]
-				print(ac)
 				task = lib.Task(
 					lib.TASK_SCAN,
 					ti["axis"],
@@ -233,10 +229,9 @@ class CNC:
 					ac["vel_max"],
 					ac["acc_max"],
 				)
-				print(task._task.scan.vel_ini)
+
 			elif ti["type"] == "calib":
 				ac = self.cache["axes"][ti["axis"]]
-				print(ac)
 				task = lib.Task(
 					lib.TASK_CALIB,
 					ti["axis"],
@@ -244,12 +239,15 @@ class CNC:
 					ac["vel_max"],
 					ac["acc_max"],
 				)
-				print(task._task.scan.vel_ini)
 
-			self.task_queue.put_nowait((ti, task))
-			if not self.dummy:
-				self.lib.cnc_push_task(task)
-				self.lib.cnc_run_async()
-			self._send_device_state()
+			elif ti["type"] in ["cmds", "move", "gcode", "curve"]:
+				task, td = Converter(self.cache).convert(ti)
+
+			if task is not None:
+				self.task_queue.put_nowait((ti, task, td))
+				if not self.dummy:
+					self.lib.cnc_push_task(task)
+					self.lib.cnc_run_async()
+				self._send_device_state()
 
 			return

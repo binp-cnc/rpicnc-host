@@ -41,19 +41,25 @@ ToggleButton.prototype.setValue = function (v) {
 	this.action();
 };
 
-function Label(elem, update) {
+function Label(elem, update, value) {
 	Item.call(this, elem);
 	this.update = update;
+	this.value = value;
 }
 Label.prototype = Object.create(Item.prototype);
 Label.prototype.constructor = Label;
 
 Label.prototype.setValue = function (v) {
+	this.value = v;
 	if (this.update) {
 		this.update(v);
 	} else {
 		this.elem.innerText = v;
 	}
+}
+
+Label.prototype.getValue = function () {
+	return this.value;
 }
 
 function Input(elem, update, type) {
@@ -76,3 +82,13 @@ Input.prototype.setValue = function (v) {
 	this._value = cast(this.type, v);
 	this.elem.value = this._value;
 }
+
+function FastInput(elem, update, type) {
+	Input.call(this, elem, update, type);
+	this.elem.addEventListener("input", function (event) {
+		this._value = cast(this.type, this.elem.value);
+		this.update(event);
+	}.bind(this));
+}
+FastInput.prototype = Object.create(Input.prototype);
+FastInput.prototype.constructor = FastInput;

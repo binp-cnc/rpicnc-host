@@ -13,7 +13,7 @@ function Axis(app, dev, num, config) {
 	}
 
 	map(["scan", "calib"], function (i, key) {
-		this.scan = new Button(ecl(this.elem, "t_axis_" + key), function () {
+		this[key] = new Button(ecl(this.elem, "t_axis_" + key), function () {
 			this.app.send({
 				"action": "run_task",
 				"task": {
@@ -39,6 +39,18 @@ function Axis(app, dev, num, config) {
 				this.dev._sendAxCDiff(this.num, cdiff);
 			}
 		}.bind(this), "float");
+	}.bind(this));
+
+	this.move_abs = new FastInput(ecl(this.elem, "t_move_abs"), function () {
+		var val = cast("int", this.move_abs.getValue());
+		this.move_rel.setValue(val - this.pos.getValue());
+	}.bind(this), "int");
+	this.move_rel = new FastInput(ecl(this.elem, "t_move_rel"), function () {
+		var val = cast("int", this.move_rel.getValue());
+		this.move_abs.setValue(val + this.pos.getValue());
+	}.bind(this), "int");
+	this.move = new Button(ecl(this.elem, "t_axis_move"), function () {
+		this.dev._sendAxMoveTask(this.num, this.move_rel.getValue());
 	}.bind(this));
 }
 Axis.prototype = Object.create(Item.prototype);
@@ -121,6 +133,18 @@ Device.prototype._sendAxCDiff = function (axno, axcache) {
 	this.app.send({
 		"action": "update_cache",
 		"cache_diff": cdiff
+	});
+}
+
+Device.prototype._sendAxMoveTask = function (axno, pos_rel) {
+	var pdata = map(this.axes, function () { return 0; })
+	pdata[axno] = pos_rel;
+	this.app.send({
+		"action": "run_task",
+		"task": {
+			"type": "move",
+			"pos_rel": pdata
+		}
 	});
 }
 
