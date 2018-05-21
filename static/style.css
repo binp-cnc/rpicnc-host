@@ -77,7 +77,7 @@ h1 {
 	vertical-align: top;
 }
 
-#canvas_wrapper {
+.canvas_wrapper {
 	display: inline-block;
 	margin: 4px;
 	padding: 0 4px 4px 4px;
@@ -87,8 +87,13 @@ h1 {
 	box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
 
-#canvas {
+.canvas {
 	background-color: #363636;
+}
+
+.axis_controls_wrapper {
+	display: inline-block;
+	vertical-align: top;
 }
 
 .axis {

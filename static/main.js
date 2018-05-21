@@ -1,210 +1,8 @@
-
-function Axis(app, dev, num, config) {
-	Item.call(this, template("T_Axis"));
-	this.app = app;
-	this.dev = dev;
-	this.num = num;
-	this.config = config;
-	
-	this._cache = {};
-
-	if (this.config["name"]) {
-		ecl(this.elem, "t_axis_name").innerText = this.config["name"].toUpperCase();
-	}
-
-	map(["scan", "calib"], function (i, key) {
-		this[key] = new Button(ecl(this.elem, "t_axis_" + key), function () {
-			this.app.send({
-				"action": "run_task",
-				"task": {
-					"id": 0,
-					"type": key,
-					"axis": this.num
-				}
-			});
-		}.bind(this));
-	}.bind(this));
-
-	this.pos = new Label(ecl(this.elem, "t_pos"));
-	this.len = new Label(ecl(this.elem, "t_len"));
-	map(["vel_init", "vel_max", "acc_max"], function (i, key) {
-		this[key] = new Input(ecl(this.elem, "t_" + key), function () {
-			console.log("change " + key);
-			var val = this[key].getValue();
-			if ((val || val == 0) && val >= 0.0) {
-				console.log(val);
-				this._cache[key] = val;
-				var cdiff = {};
-				cdiff[key] = val;
-				this.dev._sendAxCDiff(this.num, cdiff);
-			}
-		}.bind(this), "float");
-	}.bind(this));
-
-	this.move_abs = new FastInput(ecl(this.elem, "t_move_abs"), function () {
-		var val = cast("int", this.move_abs.getValue());
-		this.move_rel.setValue(val - this.pos.getValue());
-	}.bind(this), "int");
-	this.move_rel = new FastInput(ecl(this.elem, "t_move_rel"), function () {
-		var val = cast("int", this.move_rel.getValue());
-		this.move_abs.setValue(val + this.pos.getValue());
-	}.bind(this), "int");
-	this.move = new Button(ecl(this.elem, "t_axis_move"), function () {
-		this.dev._sendAxMoveTask(this.num, this.move_rel.getValue());
-	}.bind(this));
-}
-Axis.prototype = Object.create(Item.prototype);
-Axis.prototype.constructor = Axis;
-
-Axis.prototype.setCache = function (cache) {
-	this._cache = cache;
-	map_dict(this._cache, function (k, v) {
-		this[k].setValue(v);
-	}.bind(this));
-};
-
-Axis.prototype.getCache = function (cache) {
-	return this._cache;
-};
-
-Axis.prototype.setSensorsState = function (sens) {
-	ecl(this.elem, "t_sens_left").classList[sens[0] ? "add" : "remove"]("ccell_active");
-	ecl(this.elem, "t_sens_right").classList[sens[1] ? "add" : "remove"]("ccell_active");
-};
-
-Axis.prototype.completeTask = function (task) {
-	/*
-	if (task["type"] == "scan") {
-		this.pos.setValue(0);
-		this.len.setValue(task["length"]);
-	}
-	*/
-}
-
-function Device(app) {
-	Item.call(this, template("T_Device"));
-	this.app = app;
-	this.axes = [];
-	this.config = {};
-	this._cache = {};
-
-	var stop = function () {
-		console.log("stop_button: down");
-		this.app.send({"action": "stop_device"});
-	}.bind(this);
-	this.stop_button = new ButtonExt(ecl(this.elem, "t_stop_button"), {"mousedown": stop, "click": stop});
-	this.device_status = new Label(ecl(this.elem, "t_device_status"));
-}
-Device.prototype = Object.create(Item.prototype);
-Device.prototype.constructor = Device;
-
-Device.prototype.setConfig = function (config) {
-	this.config = config;
-
-	var axcon = ecl(this.elem, "t_axes");
-	clear(axcon);
-	this.axes = map(this.config["axes"], function (i, ac) {
-		var axis = new Axis(this.app, this, i, ac);
-		axcon.appendChild(axis.elem);
-		return axis;
-	}.bind(this));
-
-	this.app.send({"action": "get_cache"});
-	this.app.send({"action": "get_device_state"});
-	this.app.send({"action": "get_sensors_state"});
-}
-
-Device.prototype.setCache = function (cache) {
-	this._cache = cache;
-	map(this.axes, function (i, ax) {
-		ax.setCache(this._cache["axes"][i]);
-	}.bind(this));
-};
-
-Device.prototype.getCache = function (cache) {
-	return this._cache;
-};
-
-Device.prototype._sendAxCDiff = function (axno, axcache) {
-	var cdiff = {
-		"axes": map(this.axes, function () { return {}; })
-	};
-	cdiff["axes"][axno] = axcache;
-	this.app.send({
-		"action": "update_cache",
-		"cache_diff": cdiff
-	});
-}
-
-Device.prototype._sendAxMoveTask = function (axno, pos_rel) {
-	var pdata = map(this.axes, function () { return 0; })
-	pdata[axno] = pos_rel;
-	this.app.send({
-		"action": "run_task",
-		"task": {
-			"type": "move",
-			"pos_rel": pdata
-		}
-	});
-}
-
-Device.prototype.setSensorsState = function (sens) {
-	map(this.axes, function (i, ax) {
-		ax.setSensorsState(sens[i]);
-	}.bind(this));
-}
-
-Device.prototype.Status = {
-	ERROR: 0,
-	WARNING: 1,
-	IDLE: 2,
-	BUSY: 3
-};
-
-Device.prototype.setStatus = function (stat, info) {
-	var elem = ecl(this.elem, "t_device_status_value");
-	map(["ccol_good", "ccol_warn", "ccol_error", "ccell_active"], function (i, col) {
-		elem.classList.remove(col);
-	}.bind(this));
-	if (stat == this.Status.ERROR) {
-		elem.classList.add("ccol_error");
-	} else if (stat == this.Status.WARNING) {
-		elem.classList.add("ccol_warn");
-	} else if (stat == this.Status.IDLE) {
-		elem.classList.add("ccol_good");
-	} else if (stat == this.Status.BUSY) {
-		elem.classList.add("ccell_active");
-	}
-	elem.innerText = info;
-};
-
-Device.prototype.setState = function (info) {
-	if (info["status"] == "idle") {
-		this.setStatus(this.Status.IDLE, info["status"]);
-	} else if (info["status"] == "busy") {
-		this.setStatus(this.Status.BUSY, info["status"]);
-	} else {
-		this.setStatus(this.Status.WARNING, "unknown");
-	}
-	ecl(this.elem, "t_device_status_tasks_in_queue").innerText = info["tasks"]["count"];
-	ecl(this.elem, "t_device_status_current_task").innerText = info["tasks"]["current"];
-}
-
-Device.prototype.completeTask = function (task) {
-	if (task["type"] == "scan" || task["type"] == "calib") {
-		this.axes[task["axis"]].completeTask(task)
-	}
-}
-
 function App() {
 	this.ws = null;
 	this.wscbs = {};
 	this.wswd = null;
-
-	this.items = {};
 	this.stage = this.Stage.INIT;
-	this.config = {};
-	this.cache = {};
 }
 App.prototype.constructor = App;
 
@@ -220,19 +18,10 @@ App.prototype.init = function () {
 	clear(device_frame);
 	device_frame.appendChild(this.device.elem);
 
-
-	this.editor = {
-		"mode": {
-			"2d": new Button(eid("canvas_mode_2d"), function () {
-				this.items.editor.mode["2d"].elem.classList.remove("ccellbtn_inactive");
-				this.items.editor.mode["3d"].elem.classList.add("ccellbtn_inactive");
-			}.bind(this)),
-			"3d": new Button(eid("canvas_mode_3d"), function () {
-				this.items.editor.mode["2d"].elem.classList.add("ccellbtn_inactive");
-				this.items.editor.mode["3d"].elem.classList.remove("ccellbtn_inactive");
-			}.bind(this))
-		}
-	};
+	this.editor = new Editor(this);
+	var editor_frame = eid("editor_frame");
+	clear(editor_frame);
+	editor_frame.appendChild(this.editor.elem);
 
 	this.wscbs = {
 		"message": function (event) {
@@ -284,10 +73,7 @@ App.prototype.quit = function () {
 	this.disconnect();
 
 	this.ws = null;
-	this.items = {};
 	this.stage = this.Stage.INIT;
-	this.config = {};
-	this.cache = {};
 };
 
 App.prototype.connect = function () {
