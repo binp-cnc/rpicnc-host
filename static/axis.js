@@ -83,6 +83,11 @@ function AxisControl(app, axis) {
 		var val = cast("int", this.move_rel.getValue());
 		this.move_abs.setValue(val + this.axis.pos.getValue());
 	}.bind(this), "int");
+	this.move_rel.setValue(0);
 }
 AxisControl.prototype = Object.create(Item.prototype);
 AxisControl.prototype.constructor = AxisControl;
+
+AxisControl.prototype.refresh = function () {
+	this.move_rel.update();
+};

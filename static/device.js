@@ -38,6 +38,7 @@ Device.prototype.setCache = function (cache) {
 	map(this.axes, function (i, ax) {
 		ax.setCache(this._cache["axes"][i]);
 	}.bind(this));
+	this.app.editor.refresh();
 };
 
 Device.prototype.getCache = function (cache) {
@@ -55,14 +56,12 @@ Device.prototype._sendAxCDiff = function (axno, axcache) {
 	});
 };
 
-Device.prototype._sendAxMoveTask = function (axno, pos_rel) {
-	var pdata = map(this.axes, function (i, a) {})
-	pdata[axno] = pos_rel;
+Device.prototype._sendMoveTask = function (pos_rel) {
 	this.app.send({
 		"action": "run_task",
 		"task": {
 			"type": "move",
-			"pos_rel": pdata
+			"pos_rel": pos_rel
 		}
 	});
 };

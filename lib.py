@@ -253,7 +253,6 @@ class AxisInfo(Structure):
 		("pin_right", c_int),
 
 		("position", c_int),
-		("direction", c_int),
 		("length", c_int),
 	]
 
@@ -265,7 +264,6 @@ class AxisInfo(Structure):
 			self.pin_right = kwargs["pins"]["right"]
 
 		self.position = kwargs.get("pos", 0);
-		self.direction = kwargs.get("dir_", 0);
 		self.length = kwargs.get("len_", 0);
 
 

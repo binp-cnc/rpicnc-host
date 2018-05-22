@@ -59,6 +59,10 @@ class Converter:
 
 		elif task_info["type"] == "move":
 			for ac, pr, acmds in zip(self.cache["axes"], task_info["pos_rel"], data):
+				try:
+					pr = int(pr)
+				except TypeError:
+					pr = 0
 				d = pr > 0
 				dist = int(abs(pr))
 				if dist == 0:
