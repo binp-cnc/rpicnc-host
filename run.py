@@ -80,7 +80,11 @@ asyncio.ensure_future(periodic(app, 1.0), loop=loop)
 with open("config.json", "r") as f:
     config = json.load(f)
 
+try:
+    port = int(sys.argv[sys.argv.index("--port") + 1])
+except:
+    port = 8080
 
 with CNC(config, dummy="--dummy" in sys.argv) as cnc:
     app["cnc"] = cnc
-    web.run_app(app)
+    web.run_app(app, port=port)

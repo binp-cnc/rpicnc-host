@@ -1,5 +1,5 @@
 import ctypes
-from math import sqrt	
+import numpy as np
 
 import lib
 
@@ -58,7 +58,19 @@ class Converter:
 				data[i] = [Converter._convertcmd(cmd) for cmd in acmds]
 
 		elif task_info["type"] == "move":
-			for ac, pr, acmds in zip(self.cache["axes"], task_info["pos_rel"], data):
+			modes = {}
+			vr = np.abs(np.array(task_info["pos_rel"], dtype=np.float64))
+			vd = vr/np.sqrt(np.sum(vr**2))
+			for pn in ["vel_init", "vel_max", "acc_max"]:
+				vp = np.array([ac[pn] for ac in self.cache["axes"]], dtype=np.float64)
+				modes[pn] = vd*np.min(vp/vd)
+
+			mod_cache = [{} for _ in self.cache["axes"]]
+			for i, mc in enumerate(mod_cache):
+				for pn in modes.keys():
+					mc[pn] = modes[pn][i]
+
+			for ac, pr, acmds in zip(mod_cache, task_info["pos_rel"], data):
 				try:
 					pr = int(pr)
 				except TypeError:
@@ -82,7 +94,7 @@ class Converter:
 					])
 				else:
 					acc_dist = dist//2;
-					vel_max_red = sqrt(ac["vel_init"]*ac["vel_init"] + 2.0*ac["acc_max"]*acc_dist)
+					vel_max_red = np.sqrt(ac["vel_init"]*ac["vel_init"] + 2.0*ac["acc_max"]*acc_dist)
 					rvmr = int(1e6/vel_max_red)
 					acmds.extend([
 						lib.Cmd(lib.CMD_MOVE, lib.CMD_MOVE_ACC, d, acc_dist, rvi, rvmr),

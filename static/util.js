@@ -55,3 +55,13 @@ function cast(type, val) {
 	console.error("unknown type '" + type + "'");
 	return val;
 }
+
+function clamp(v, l, h) {
+	if (v < l) {
+		return l;
+	} else if (v > h) {
+		return h;
+	} else {
+		return v;
+	}
+}

@@ -68,9 +68,10 @@ Axis.prototype.completeTask = function (task) {
 	*/
 }
 
-function AxisControl(app, axis) {
+function AxisControl(app, editor, axis) {
 	Item.call(this, template("T_AxisControl"));
 	this.app = app;
+	this.editor = editor;
 	this.axis = axis;
 
 	ecl(this.elem, "t_name").innerText = "Axis " + this.axis.config["name"].toUpperCase();
@@ -78,10 +79,12 @@ function AxisControl(app, axis) {
 	this.move_abs = new FastInput(ecl(this.elem, "t_move_abs"), function () {
 		var val = cast("int", this.move_abs.getValue());
 		this.move_rel.setValue(val - this.axis.pos.getValue());
+		this.editor.draw();
 	}.bind(this), "int");
 	this.move_rel = new FastInput(ecl(this.elem, "t_move_rel"), function () {
 		var val = cast("int", this.move_rel.getValue());
 		this.move_abs.setValue(val + this.axis.pos.getValue());
+		this.editor.draw();
 	}.bind(this), "int");
 	this.move_rel.setValue(0);
 }
